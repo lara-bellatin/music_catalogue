@@ -4,6 +4,7 @@ from datetime import date
 from enum import Enum
 
 from music_catalogue.models.artists import Artist, Person
+from music_catalogue.models.utils import _maybe, _list_maybe
 
 
 class VersionType(str, Enum):
@@ -66,13 +67,22 @@ class Genre(BaseModel):
     name: str
     description: Optional[str] = None
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "Genre":
+        return cls(
+            id=data["genre_id"],
+            name=data["name"],
+            description=data.get("description"),
+        )
+
 
 class Work(BaseModel):
     id: str
     title: str
-    language: str
-    titles: Optional[Dict[str, Any]] = None
+    language: Optional[str] = None
+    titles: Optional[List[Dict[str, Any]]] = None
     description: Optional[str] = None
+    identifiers: Optional[List[Dict[str, Any]]] = None
     origin_year_start: Optional[int] = None
     origin_year_end: Optional[int] = None
     origin_country: Optional[int] = None
@@ -81,6 +91,27 @@ class Work(BaseModel):
     notes: Optional[str] = None
     versions: List["Version"] = Field(default_factory=list)
     genres: List[Genre] = Field(default_factory=list)
+    credits: List["Credit"] = Field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Work":
+        return cls(
+            id=data["work_id"],
+            title=data["title"],
+            language=data.get("language"),
+            titles=data.get("titles"),
+            description=data.get("description"),
+            identifiers=data.get("identifiers"),
+            origin_year_start=data.get("origin_year_start"),
+            origin_year_end=data.get("origin_year_end"),
+            origin_country=data.get("origin_country"),
+            themes=data.get("themes"),
+            sentiment=data.get("sentiment"),
+            notes=data.get("notes"),
+            versions=_list_maybe(Version, data.get("versions")),
+            genres=_list_maybe(Genre, data.get("work_genres")),
+            credits=_list_maybe(Credit, data.get("credits")),
+        )
 
 class Version(BaseModel):
     id: str
@@ -90,12 +121,32 @@ class Version(BaseModel):
     based_on_version: Optional["Version"] = None
     primary_artist: Artist
     release_date: Optional[date] = None
+    release_year: Optional[int] = None
     duration_seconds: Optional[int] = None
     bpm: Optional[int] = None
     key_signature: Optional[str] = None
     lyrics_reference: Optional[str] = None
     completeness_level: CompletenessLevel = CompletenessLevel.COMPLETE
     notes: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Version":
+        return cls(
+            id=data["version_id"],
+            work=Work(data.get("work")) or None,
+            title=data["title"],
+            version_type=VersionType(data["version_type"]),
+            based_on_version=_maybe(Version, data.get("based_on_version")),
+            primary_artist=_maybe(Artist, data.get("primary_artist")),
+            release_date=date(data.get("release_date")),
+            release_year=data.get("release_year"),
+            duration_seconds=data.get("duration_seconds"),
+            bpm=data.get("bpm"),
+            key_signature=data.get("key_signature"),
+            lyrics_reference=data.get("lyrics_reference"),
+            completeness_level=CompletenessLevel(data.get("completeness_level")),
+            notes=data.get("notes"),
+        )
 
 
 class Release(BaseModel):
@@ -112,14 +163,33 @@ class Release(BaseModel):
     total_discs: int = 1
     total_tracks: int
     notes: Optional[str] = None
-    media_items: Optional[List["ReleaseMediaItem"]] = None
+    media_items: List["ReleaseMediaItem"] = Field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Release":
+        return cls(
+            id=data["release_id"],
+            title=data["title"],
+            release_date=date(data.get("release_date")) or None,
+            release_category=ReleaseCategory(data.get("release_category")),
+            catalog_number=data.get("catalog_number"),
+            publisher_number=data.get("publisher_number"),
+            label=data.get("label"),
+            region=data.get("region"),
+            release_stage=ReleaseStage(data.get("release_stage")),
+            cover_art_url=data.get("cover_art_url"),
+            total_discs=data.get("total_discs"),
+            total_tracks=data.get("total_tracks"),
+            notes=data.get("notes"),
+            media_items=_list_maybe(ReleaseMediaItem, data.get("release_media_items")),
+        )
 
 
 class ReleaseMediaItem(BaseModel):
     id: str
-    release: Release
     medium_type: MediumType
     format_name: str
+    release: Optional[Release] = None
     platform_or_vendor: Optional[str] = None
     bitrate_kbps: Optional[int] = None
     sample_rate_hz: Optional[int] = None
@@ -127,7 +197,7 @@ class ReleaseMediaItem(BaseModel):
     rpm: Optional[float] = None
     channels: Optional[AudioChannel] = None
     packaging: Optional[str] = None
-    accesories: Optional[str] = None
+    accessories: Optional[str] = None
     pressing_details: Optional[Any] = None
     sku: Optional[str] = None
     barcode: Optional[str] = None
@@ -135,27 +205,80 @@ class ReleaseMediaItem(BaseModel):
     availability_status: AvailabilityStatus = AvailabilityStatus.IN_PRINT
     notes: Optional[str] = None
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "ReleaseMediaItem":
+        return cls(
+            id=data["media_item_id"],
+            release=_maybe(Release, data.get("release")),
+            medium_type=MediumType(data["medium_type"]),
+            format_name=data["format_name"],
+            platform_or_vendor=data.get("platform_or_vendor"),
+            bitrate_kbps=data.get("bitrate_kbps"),
+            sample_rate_hz=data.get("sample_rate_hz"),
+            bit_depth=data.get("bit_depth"),
+            rpm=data.get("rpm"),
+            channels=AudioChannel(data.get("channels")),
+            packaging=data.get("packaging"),
+            accessories=data.get("accessories"),
+            pressing_details=data.get("pressing_details"),
+            sku=data.get("sku"),
+            barcode=data.get("barcode"),
+            catalog_variation=data.get("catalog_variation"),
+            availability_status=AvailabilityStatus(data.get("availability_status")),
+        )
+
 
 class ReleaseTrack(BaseModel):
     id: str
-    release: Release
     version: Version
-    disc_number: int = 1
     track_number: int
-    side: Optional[str]
+    disc_number: int = 1
+    side: Optional[str] = None
+    release: Optional[Release] = None
     is_hidden: bool = False
     notes: Optional[str] = None
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "ReleaseTrack":
+        return cls(
+            id=data["release_track_id"],
+            release=_maybe(Release, data.get("release")),
+            version=_maybe(Version, data.get("version")),
+            track_number=data["track_number"],
+            disc_number=data.get("disc_number"),
+            side=data.get("side"),
+            is_hidden=data.get("is_hidden"),
+            notes=data.get("notes")
+        )
+    
+
 class Credit(BaseModel):
     id: str
-    version: Version
+    work: Optional[Work] = None
+    version: Optional[Version] = None
     artist: Optional[Artist] = None
     person: Optional[Person] = None
-    role: str
+    role: Optional[str] = None
     is_primary: bool = False
-    credit_order: int
+    credit_order: Optional[int] = None
     instruments: Optional[List[str]] = None
     notes: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Credit":
+        print(data)
+        return cls(
+            id=data["credit_id"],
+            work=_maybe(Work, data.get("work")),
+            version=_maybe(Version, data.get("version")),
+            artist=_maybe(Artist, data.get("artist")),
+            person=_maybe(Person, data.get("person")),
+            role=data.get("role"),
+            is_primary=data.get("is_primary"),
+            credit_order=data.get("credit_order"),
+            instruments=data.get("instruments"),
+            notes=data.get("notes"),
+        )
 
 
 Work.model_rebuild()

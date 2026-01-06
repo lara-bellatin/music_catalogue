@@ -14,29 +14,28 @@ async def get_by_id(id: str) -> Work:
             *,
             versions(
                 *,
-                versions!based_on_version_id(*, artists(*)),
-                artists(*, persons(*), artist_memberships(*, persons(*))),
+                versions!based_on_version_id(*, artist:artists(*)),
+                artist:artists(*, person:persons(*), artist_memberships(*, person:persons(*))),
                 release_tracks(*, releases(*)),
                 credits(
                     *,
-                    persons(*),
-                    artists(*, persons(*), artist_memberships(persons(*)))
+                    person:persons(*),
+                    artist:artists(*, person:persons(*), artist_memberships(persons(*)))
                 )
             ),
             work_genres(genres(*)),
-            credits(*, persons(*), artists(*, artist_memberships(*, persons(*))))
+            credits(*, person:persons(*), artist:artists(*, artist_memberships(*, person:persons(*))))
         """
         )
         .eq("work_id", id)
         .execute()
     )
-    
-    # TODO: use model validation
-    return res.data[0]
+    # TODO: error control
+    return Work.from_dict(res.data[0])
 
 async def search(query: str) -> Optional[List[Work]]:
     supabase = await get_supabase()
-    data = await (
+    res = await (
         supabase
         .table("works")
         .select(
@@ -59,6 +58,6 @@ async def search(query: str) -> Optional[List[Work]]:
         ).text_search("search_text", query.replace(' ', "+"))
         .execute()
     )
-    # TODO: add error control
-    # TODO: use model validation
-    return data
+
+    # TODO: error control
+    return [Work.from_dict(work) for work in res.data]

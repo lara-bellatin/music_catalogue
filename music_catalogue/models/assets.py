@@ -1,7 +1,11 @@
 from pydantic import BaseModel
-from typing import Any, List, Optional
+from typing import Optional, Union
 from datetime import date
 from enum import Enum
+
+from music_catalogue.models.artists import Person, Artist
+from music_catalogue.models.works import Work, Version, Release, ReleaseMediaItem, Credit, Genre
+from music_catalogue.models.users import User
 
 
 class AssetType(str, Enum):
@@ -16,8 +20,64 @@ class CollectionItemOwnerType(str, Enum):
     INSTITUTION = "institution"
     COLLECTOR = "collector"
 
-# MISSING
-# class ExternalLinks
-# class Evidence
-# class NotationAssets
-# class CollectionItems
+
+class EntityType(str, Enum):
+    PERSON = "person"
+    ARTIST = "artist"
+    WORK = "work"
+    VERSION = "version"
+    RELEASE = "release"
+    MEDIA_ITEM = "media_item"
+    CREDIT = "credit"
+    GENRE = "genre"
+
+
+class ContributionStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class ExternalLink(BaseModel):
+    id: str
+    entity_type: EntityType
+    entity: Union[Person, Artist, Work, Version, Release, ReleaseMediaItem, Credit, Genre]
+    label: str
+    url: str
+    added_by: User
+    created_at: date
+    source_verified: bool = False
+
+
+class Evidence(BaseModel):
+    id: str
+    entity_type: EntityType
+    entity: Union[Person, Artist, Work, Version, Release, ReleaseMediaItem, Credit, Genre]
+    uploaded_by: User
+    source_type: str
+    source_detail: str
+    file_url: str
+    created_at: date
+    verified: bool = False
+
+
+class NotationAsset(BaseModel):
+    id: str
+    entity_type: EntityType
+    entity: Union[Person, Artist, Work, Version, Release, ReleaseMediaItem, Credit, Genre]
+    asset_type: AssetType
+    file_url: str
+    uploaded_by: User
+    created_at: date
+    mime_type: Optional[str] = None
+
+
+class CollectionItem(BaseModel):
+    id: str
+    owner_type: CollectionItemOwnerType
+    owner_name: str
+    media_item: ReleaseMediaItem
+    location: Optional[str] = None
+    condition_grade: Optional[str] = None
+    acquisition_date: Optional[date] = None
+    notes: Optional[str] = None

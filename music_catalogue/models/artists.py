@@ -1,8 +1,9 @@
-from pydantic import BaseModel
-from typing import Any, List, Optional
+from pydantic import BaseModel, Field
+from typing import List, Optional
 from datetime import date
 from enum import Enum
 
+from music_catalogue.models.utils import _maybe, _list_maybe
 
 class ArtistType(str, Enum):
     SOLO = "solo"
@@ -17,6 +18,17 @@ class Person(BaseModel):
     pronouns: Optional[str] = None
     notes: Optional[str] = None
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "Person":
+        return cls(
+            id=data["person_id"],
+            legal_name=data["legal_name"],
+            birth_date=date.fromisoformat(data.get("birth_date")) if data.get("birth_date") else None,
+            death_date=date.fromisoformat(data.get("death_date")) if data.get("death_date") else None,
+            pronouns=data.get("pronouns"),
+            notes=data.get("notes"),
+        )
+
 
 class Artist(BaseModel):
     id: str
@@ -24,21 +36,46 @@ class Artist(BaseModel):
     artist_type: ArtistType
     display_name: str
     sort_name: Optional[str] = None
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
-    identifiers: Optional[Any] = None
-    members: Optional[List["ArtistMembership"]] = None
+    alternative_names: List[str] = Field(default_factory=list)
+    start_year: Optional[int] = None
+    end_year: Optional[int] = None
+    members: List["ArtistMembership"] = Field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Artist":
+        return cls(
+            id=data["artist_id"],
+            person=_maybe(Person, data.get("person")),
+            artist_type=ArtistType(data["artist_type"]),
+            display_name=data["display_name"],
+            sort_name=data.get("sort_name"),
+            alternative_names=data.get("alternative_names"),
+            start_year=data.get("start_year"),
+            end_year=data.get("end_year"),
+            members=_list_maybe(ArtistMembership, data.get("artist_memberships")),
+        )
 
 
 class ArtistMembership(BaseModel):
     id: str
-    artist: Artist
-    person: Person
-    role: str
-    start_date: date
-    end_date: Optional[date] = None
+    artist: Optional[Artist] = None
+    person: Optional[Person] = None
+    start_year: Optional[int] = None
+    end_year: Optional[int] = None
+    role: Optional[str] = None
     notes: Optional[str] = None
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "ArtistMembership":
+        return cls(
+            id=data["membership_id"],
+            artist=_maybe(Artist, data.get("artist")),
+            person=_maybe(Person, data.get("person")),
+            start_year=data.get("start_year"),
+            end_year=data.get("end_year"),
+            role=data.get("role"),
+            notes=data.get("notes")
+        )
 
 
 Artist.model_rebuild()
