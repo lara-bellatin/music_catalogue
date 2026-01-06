@@ -1,10 +1,12 @@
 from enum import Enum
+from typing import TYPE_CHECKING, Dict, List, Union
+
 from pydantic import BaseModel
-from typing import Dict, List, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from music_catalogue.models.artists import Person, Artist
-    from music_catalogue.models.works import Work, Version, Release, ReleaseMediaItem, Credit, Genre
+    from music_catalogue.models.artists import Artist, Person
+    from music_catalogue.models.works import Credit, Genre, Release, ReleaseMediaItem, Version, Work
+
 
 class EntityType(str, Enum):
     PERSON = "person"
@@ -36,7 +38,6 @@ class UnifiedSearchResult(BaseModel):
         )
 
 
-
 def _parse(model_cls: BaseModel, data: Dict) -> AnyEntityType:
     if not data:
         return None
@@ -47,4 +48,3 @@ def _parse_list(model_cls: BaseModel, data: Dict) -> List[AnyEntityType]:
     if not data:
         return []
     return [_parse(model_cls, item) for item in data if _parse(model_cls, item) is not None]
-    

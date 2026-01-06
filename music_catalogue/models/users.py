@@ -1,7 +1,8 @@
-from pydantic import BaseModel
-from typing import Optional
 from datetime import date
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel
 
 from music_catalogue.models.utils import AnyEntityType, EntityType
 
@@ -25,10 +26,12 @@ class User(BaseModel):
     trust_score: int
     role: UserRole = UserRole.MEMBER
 
+
 class Tag(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
+
 
 class TagAssignment(BaseModel):
     id: str

@@ -13,6 +13,20 @@ supabase = "^2.25.0"
 python-dotenv = "^1.2.1"
 
 
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.14.10"
+pre-commit = "^4.5.1"
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[tool.ruff.isort]
+known-first-party = ["music_catalogue"]
+
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

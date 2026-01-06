@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field
-from typing import Any, Dict, List, Optional
 from datetime import date
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 from music_catalogue.models.artists import Artist, Person
 from music_catalogue.models.utils import _parse, _parse_list
@@ -112,6 +113,7 @@ class Work(BaseModel):
             genres=_parse_list(Genre, data.get("work_genres")),
             credits=_parse_list(Credit, data.get("credits")),
         )
+
 
 class Version(BaseModel):
     id: str
@@ -248,9 +250,9 @@ class ReleaseTrack(BaseModel):
             disc_number=data.get("disc_number"),
             side=data.get("side"),
             is_hidden=data.get("is_hidden"),
-            notes=data.get("notes")
+            notes=data.get("notes"),
         )
-    
+
 
 class Credit(BaseModel):
     id: str

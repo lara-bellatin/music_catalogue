@@ -1,9 +1,11 @@
-from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
 from datetime import date
 from enum import Enum
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 from music_catalogue.models.utils import _parse, _parse_list
+
 
 class ArtistType(str, Enum):
     SOLO = "solo"
@@ -74,7 +76,7 @@ class ArtistMembership(BaseModel):
             start_year=data.get("start_year"),
             end_year=data.get("end_year"),
             role=data.get("role"),
-            notes=data.get("notes")
+            notes=data.get("notes"),
         )
 
 

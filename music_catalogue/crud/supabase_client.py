@@ -1,7 +1,9 @@
 import asyncio
 import os
+
 from dotenv import load_dotenv
-from supabase import create_async_client, AsyncClient
+
+from supabase import AsyncClient, create_async_client
 
 load_dotenv()
 
@@ -10,6 +12,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 supabase: AsyncClient | None = None
 _lock = asyncio.Lock()
+
 
 async def get_supabase() -> AsyncClient:
     global supabase
@@ -21,5 +24,5 @@ async def get_supabase() -> AsyncClient:
                 SUPABASE_URL,
                 SUPABASE_KEY,
             )
-    
+
     return supabase
