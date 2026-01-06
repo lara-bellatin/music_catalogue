@@ -1,9 +1,9 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import Dict, List, Optional
 from datetime import date
 from enum import Enum
 
-from music_catalogue.models.utils import _maybe, _list_maybe
+from music_catalogue.models.utils import _parse, _parse_list
 
 class ArtistType(str, Enum):
     SOLO = "solo"
@@ -19,7 +19,7 @@ class Person(BaseModel):
     notes: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Person":
+    def from_dict(cls, data: Dict) -> "Person":
         return cls(
             id=data["person_id"],
             legal_name=data["legal_name"],
@@ -42,17 +42,17 @@ class Artist(BaseModel):
     members: List["ArtistMembership"] = Field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Artist":
+    def from_dict(cls, data: Dict) -> "Artist":
         return cls(
             id=data["artist_id"],
-            person=_maybe(Person, data.get("person")),
+            person=_parse(Person, data.get("person")),
             artist_type=ArtistType(data["artist_type"]),
             display_name=data["display_name"],
             sort_name=data.get("sort_name"),
             alternative_names=data.get("alternative_names"),
             start_year=data.get("start_year"),
             end_year=data.get("end_year"),
-            members=_list_maybe(ArtistMembership, data.get("artist_memberships")),
+            members=_parse_list(ArtistMembership, data.get("artist_memberships")),
         )
 
 
@@ -66,11 +66,11 @@ class ArtistMembership(BaseModel):
     notes: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ArtistMembership":
+    def from_dict(cls, data: Dict) -> "ArtistMembership":
         return cls(
             id=data["membership_id"],
-            artist=_maybe(Artist, data.get("artist")),
-            person=_maybe(Person, data.get("person")),
+            artist=_parse(Artist, data.get("artist")),
+            person=_parse(Person, data.get("person")),
             start_year=data.get("start_year"),
             end_year=data.get("end_year"),
             role=data.get("role"),

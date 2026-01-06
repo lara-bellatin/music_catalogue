@@ -1,26 +1,15 @@
 from pydantic import BaseModel
-from typing import Optional, Union
+from typing import Optional
 from datetime import date
 from enum import Enum
 
-from music_catalogue.models.artists import Person, Artist
-from music_catalogue.models.works import Work, Version, Release, ReleaseMediaItem, Credit, Genre
+from music_catalogue.models.utils import AnyEntityType, EntityType
 
 
 class UserRole(str, Enum):
     MEMBER = "member"
     MODERATOR = "moderator"
     ADMIN = "admin"
-
-
-class EntityType(str, Enum):
-    PERSON = "person"
-    ARTIST = "artist"
-    WORK = "work"
-    VERSION = "version"
-    RELEASE = "release"
-    MEDIA_ITEM = "media_item"
-    CREDIT = "credit"
 
 
 class ContributionStatus(str, Enum):
@@ -45,7 +34,7 @@ class TagAssignment(BaseModel):
     id: str
     tag: Tag
     entity_type: EntityType
-    entity: Union[Person, Artist, Work, Version, Release, ReleaseMediaItem, Credit, Genre]
+    entity: AnyEntityType
     user: User
     confidence: int
     created_at: date
@@ -54,7 +43,7 @@ class TagAssignment(BaseModel):
 class Contribution(BaseModel):
     id: str
     entity_type: EntityType
-    entity: Union[Person, Artist, Work, Version, Release, ReleaseMediaItem, Credit, Genre]
+    entity: AnyEntityType
     user: User
     change_summary: str
     contribution_status: ContributionStatus

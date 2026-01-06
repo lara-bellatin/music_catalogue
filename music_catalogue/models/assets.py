@@ -1,10 +1,10 @@
 from pydantic import BaseModel
-from typing import Optional, Union
+from typing import Optional
 from datetime import date
 from enum import Enum
 
-from music_catalogue.models.artists import Person, Artist
-from music_catalogue.models.works import Work, Version, Release, ReleaseMediaItem, Credit, Genre
+from music_catalogue.models.utils import AnyEntityType, EntityType
+from music_catalogue.models import ReleaseMediaItem
 from music_catalogue.models.users import User
 
 
@@ -21,17 +21,6 @@ class CollectionItemOwnerType(str, Enum):
     COLLECTOR = "collector"
 
 
-class EntityType(str, Enum):
-    PERSON = "person"
-    ARTIST = "artist"
-    WORK = "work"
-    VERSION = "version"
-    RELEASE = "release"
-    MEDIA_ITEM = "media_item"
-    CREDIT = "credit"
-    GENRE = "genre"
-
-
 class ContributionStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
@@ -41,7 +30,7 @@ class ContributionStatus(str, Enum):
 class ExternalLink(BaseModel):
     id: str
     entity_type: EntityType
-    entity: Union[Person, Artist, Work, Version, Release, ReleaseMediaItem, Credit, Genre]
+    entity: AnyEntityType
     label: str
     url: str
     added_by: User
@@ -52,7 +41,7 @@ class ExternalLink(BaseModel):
 class Evidence(BaseModel):
     id: str
     entity_type: EntityType
-    entity: Union[Person, Artist, Work, Version, Release, ReleaseMediaItem, Credit, Genre]
+    entity: AnyEntityType
     uploaded_by: User
     source_type: str
     source_detail: str
@@ -64,7 +53,7 @@ class Evidence(BaseModel):
 class NotationAsset(BaseModel):
     id: str
     entity_type: EntityType
-    entity: Union[Person, Artist, Work, Version, Release, ReleaseMediaItem, Credit, Genre]
+    entity: AnyEntityType
     asset_type: AssetType
     file_url: str
     uploaded_by: User

@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 
 from music_catalogue.crud.supabase_client import get_supabase
 
-from music_catalogue.models.artists import Artist, Person
+from music_catalogue.models import Artist, Person, _parse, _parse_list
 
 async def get_by_id(id: str) -> Artist:
     supabase = await get_supabase()
@@ -21,7 +21,7 @@ async def get_by_id(id: str) -> Artist:
     )
     
     # TODO: error control
-    return Artist.from_dict(res.data[0])
+    return _parse(Artist, res.data[0])
 
 async def search(query: str) -> Optional[List[Union[Artist, Person]]]:
     supabase = await get_supabase()
@@ -39,7 +39,7 @@ async def search(query: str) -> Optional[List[Union[Artist, Person]]]:
         .execute()
     )
 
-    artists = [Artist.from_dict(artist) for artist in artist_data.data]
+    artists = _parse_list(Artist, artist_data.data)
 
     person_data = await (
         supabase
@@ -54,8 +54,8 @@ async def search(query: str) -> Optional[List[Union[Artist, Person]]]:
         ).text_search("search_text", query.replace(' ', '+'))
         .execute()
     )
-    
-    persons = [Person.from_dict(person) for person in person_data.data]
+
+    persons = _parse_list(Person, person_data.data)
 
     # TODO: error control
     return artists + persons

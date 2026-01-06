@@ -40,7 +40,7 @@ begin
     end if;
 
     if not exists (select 1 from pg_type where typname = 'entity_type' and typnamespace = 'public'::regnamespace) then
-        create type public.entity_type as enum ('person', 'artist', 'work', 'version', 'release', 'media_item', 'credit');
+        create type public.entity_type as enum ('person', 'artist', 'work', 'version', 'release', 'media_item', 'credit', 'genre');
     end if;
 
     if not exists (select 1 from pg_type where typname = 'asset_type' and typnamespace = 'public'::regnamespace) then
@@ -242,7 +242,7 @@ create table if not exists external_links (
     label text not null,
     url text not null,
     source_verified boolean default false,
-    added_by uuid,
+    added_by uuid not null,
     created_at timestamp default now(),
     constraint fk_external_links_user foreign key (added_by) references users(user_id)
 );
@@ -251,10 +251,10 @@ create table if not exists evidence (
     evidence_id uuid primary key default gen_random_uuid(),
     entity_type public.entity_type not null,
     entity_id uuid not null,
-    source_type text,
-    source_detail text,
-    file_url text,
-    uploaded_by uuid,
+    source_type text not null,
+    source_detail text not null,
+    file_url text not null,
+    uploaded_by uuid not null,
     verified boolean default false,
     created_at timestamp default now(),
     constraint fk_evidence_uploaded_by foreign key (uploaded_by) references users(user_id)
@@ -267,17 +267,17 @@ create table if not exists notation_assets (
     asset_type public.asset_type not null,
     file_url text not null,
     mime_type text,
-    uploaded_by uuid,
+    uploaded_by uuid not null,
     created_at timestamp default now(),
     constraint fk_notation_assets_uploaded_by foreign key (uploaded_by) references users(user_id)
 );
 
 create table if not exists contributions (
     contribution_id uuid primary key default gen_random_uuid(),
-    user_id uuid,
-    entity_type public.entity_type,
-    entity_id uuid,
-    change_summary text,
+    user_id uuid not null,
+    entity_type public.entity_type not null,
+    entity_id uuid not null,
+    change_summary text not null,
     status public.contribution_status not null default 'pending',
     created_at timestamp default now(),
     reviewed_by uuid,
@@ -287,9 +287,9 @@ create table if not exists contributions (
 
 create table if not exists collection_items (
     collection_item_id uuid primary key default gen_random_uuid(),
-    media_item_id uuid,
+    media_item_id uuid not null,
     owner_type public.collection_item_owner_type not null default 'collector',
-    owner_name text,
+    owner_name text not null,
     location text,
     condition_grade text,
     acquisition_date date,

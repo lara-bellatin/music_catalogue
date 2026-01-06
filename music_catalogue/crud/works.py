@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from music_catalogue.crud.supabase_client import get_supabase
 
-from music_catalogue.models.works import Work
+from music_catalogue.models import Work, _parse, _parse_list
 
 async def get_by_id(id: str) -> Work:
     supabase = await get_supabase()
@@ -31,7 +31,7 @@ async def get_by_id(id: str) -> Work:
         .execute()
     )
     # TODO: error control
-    return Work.from_dict(res.data[0])
+    return _parse(Work, res.data[0])
 
 async def search(query: str) -> Optional[List[Work]]:
     supabase = await get_supabase()
@@ -60,4 +60,4 @@ async def search(query: str) -> Optional[List[Work]]:
     )
 
     # TODO: error control
-    return [Work.from_dict(work) for work in res.data]
+    return _parse_list(Work, res.data)

@@ -4,7 +4,7 @@ from datetime import date
 from enum import Enum
 
 from music_catalogue.models.artists import Artist, Person
-from music_catalogue.models.utils import _maybe, _list_maybe
+from music_catalogue.models.utils import _parse, _parse_list
 
 
 class VersionType(str, Enum):
@@ -68,7 +68,7 @@ class Genre(BaseModel):
     description: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Genre":
+    def from_dict(cls, data: Dict) -> "Genre":
         return cls(
             id=data["genre_id"],
             name=data["name"],
@@ -94,7 +94,7 @@ class Work(BaseModel):
     credits: List["Credit"] = Field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Work":
+    def from_dict(cls, data: Dict) -> "Work":
         return cls(
             id=data["work_id"],
             title=data["title"],
@@ -108,9 +108,9 @@ class Work(BaseModel):
             themes=data.get("themes"),
             sentiment=data.get("sentiment"),
             notes=data.get("notes"),
-            versions=_list_maybe(Version, data.get("versions")),
-            genres=_list_maybe(Genre, data.get("work_genres")),
-            credits=_list_maybe(Credit, data.get("credits")),
+            versions=_parse_list(Version, data.get("versions")),
+            genres=_parse_list(Genre, data.get("work_genres")),
+            credits=_parse_list(Credit, data.get("credits")),
         )
 
 class Version(BaseModel):
@@ -130,14 +130,14 @@ class Version(BaseModel):
     notes: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Version":
+    def from_dict(cls, data: Dict) -> "Version":
         return cls(
             id=data["version_id"],
             work=Work(data.get("work")) or None,
             title=data["title"],
             version_type=VersionType(data["version_type"]),
-            based_on_version=_maybe(Version, data.get("based_on_version")),
-            primary_artist=_maybe(Artist, data.get("primary_artist")),
+            based_on_version=_parse(Version, data.get("based_on_version")),
+            primary_artist=_parse(Artist, data.get("primary_artist")),
             release_date=date(data.get("release_date")),
             release_year=data.get("release_year"),
             duration_seconds=data.get("duration_seconds"),
@@ -166,7 +166,7 @@ class Release(BaseModel):
     media_items: List["ReleaseMediaItem"] = Field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Release":
+    def from_dict(cls, data: Dict) -> "Release":
         return cls(
             id=data["release_id"],
             title=data["title"],
@@ -181,7 +181,7 @@ class Release(BaseModel):
             total_discs=data.get("total_discs"),
             total_tracks=data.get("total_tracks"),
             notes=data.get("notes"),
-            media_items=_list_maybe(ReleaseMediaItem, data.get("release_media_items")),
+            media_items=_parse_list(ReleaseMediaItem, data.get("release_media_items")),
         )
 
 
@@ -206,10 +206,10 @@ class ReleaseMediaItem(BaseModel):
     notes: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ReleaseMediaItem":
+    def from_dict(cls, data: Dict) -> "ReleaseMediaItem":
         return cls(
             id=data["media_item_id"],
-            release=_maybe(Release, data.get("release")),
+            release=_parse(Release, data.get("release")),
             medium_type=MediumType(data["medium_type"]),
             format_name=data["format_name"],
             platform_or_vendor=data.get("platform_or_vendor"),
@@ -239,11 +239,11 @@ class ReleaseTrack(BaseModel):
     notes: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ReleaseTrack":
+    def from_dict(cls, data: Dict) -> "ReleaseTrack":
         return cls(
             id=data["release_track_id"],
-            release=_maybe(Release, data.get("release")),
-            version=_maybe(Version, data.get("version")),
+            release=_parse(Release, data.get("release")),
+            version=_parse(Version, data.get("version")),
             track_number=data["track_number"],
             disc_number=data.get("disc_number"),
             side=data.get("side"),
@@ -265,14 +265,14 @@ class Credit(BaseModel):
     notes: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Credit":
+    def from_dict(cls, data: Dict) -> "Credit":
         print(data)
         return cls(
             id=data["credit_id"],
-            work=_maybe(Work, data.get("work")),
-            version=_maybe(Version, data.get("version")),
-            artist=_maybe(Artist, data.get("artist")),
-            person=_maybe(Person, data.get("person")),
+            work=_parse(Work, data.get("work")),
+            version=_parse(Version, data.get("version")),
+            artist=_parse(Artist, data.get("artist")),
+            person=_parse(Person, data.get("person")),
             role=data.get("role"),
             is_primary=data.get("is_primary"),
             credit_order=data.get("credit_order"),
