@@ -38,7 +38,7 @@ class Artist(BaseModel):
     artist_type: ArtistType
     display_name: str
     sort_name: Optional[str] = None
-    alternative_names: List[str] = Field(default_factory=list)
+    alternative_names: Optional[List[str]] = None
     start_year: Optional[int] = None
     end_year: Optional[int] = None
     members: List["ArtistMembership"] = Field(default_factory=list)

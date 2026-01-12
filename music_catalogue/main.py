@@ -20,7 +20,7 @@ app.add_middleware(
 # Unified Search
 @app.get("/search", tags=["Unified Search"], response_model=List[UnifiedSearchResult])
 async def search_all(
-    query: str,
+    query: str = Query(min_length=2, max_length=50),
     entity_types: Optional[List[EntityType]] = Query(None),
     limit: int = Query(20, ge=1, le=100),
 ):
@@ -40,7 +40,7 @@ async def get_work_by_id(id: str):
 
 
 @app.get("/works", tags=["Works"], response_model=List[Work])
-async def search_works(query: str = Query(None, min_length=2, max_length=50)):
+async def search_works(query: str = Query(min_length=2, max_length=50)):
     """
     Searches for works based on a query string.
     """
@@ -57,7 +57,7 @@ async def get_artist_by_id(id: str):
 
 
 @app.get("/artists", tags=["Artists"], response_model=List[Union[Artist, Person]])
-async def search_artists(query: str = Query(None, min_length=2, max_length=50)):
+async def search_artists(query: str = Query(min_length=2, max_length=50)):
     """
     Searches for artists based on a query string.
     """

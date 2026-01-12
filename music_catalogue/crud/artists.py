@@ -19,6 +19,9 @@ async def get_by_id(id: str) -> Artist:
         .execute()
     )
 
+    if not res.data:
+        return None
+
     # TODO: error control
     return _parse(Artist, res.data[0])
 

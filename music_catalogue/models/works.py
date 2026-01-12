@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -117,8 +117,8 @@ class Work(BaseModel):
 
 class Version(BaseModel):
     id: str
-    work: Work
     title: str
+    work: Optional[Work] = None
     version_type: VersionType = VersionType.ORIGINAL
     based_on_version: Optional["Version"] = None
     primary_artist: Artist
@@ -135,12 +135,14 @@ class Version(BaseModel):
     def from_dict(cls, data: Dict) -> "Version":
         return cls(
             id=data["version_id"],
-            work=Work(data.get("work")) or None,
+            work=_parse(Work, data.get("work")),
             title=data["title"],
             version_type=VersionType(data["version_type"]),
             based_on_version=_parse(Version, data.get("based_on_version")),
             primary_artist=_parse(Artist, data.get("primary_artist")),
-            release_date=date(data.get("release_date")),
+            release_date=datetime.strptime(data.get("release_date"), "%Y-%m-%d").date()
+            if data.get("release_date")
+            else None,
             release_year=data.get("release_year"),
             duration_seconds=data.get("duration_seconds"),
             bpm=data.get("bpm"),
@@ -172,7 +174,9 @@ class Release(BaseModel):
         return cls(
             id=data["release_id"],
             title=data["title"],
-            release_date=date(data.get("release_date")) or None,
+            release_date=datetime.strptime(data.get("release_date"), "%Y-%m-%d").date()
+            if data.get("release_date")
+            else None,
             release_category=ReleaseCategory(data.get("release_category")),
             catalog_number=data.get("catalog_number"),
             publisher_number=data.get("publisher_number"),

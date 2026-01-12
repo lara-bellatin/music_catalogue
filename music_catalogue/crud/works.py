@@ -29,6 +29,10 @@ async def get_by_id(id: str) -> Work:
         .eq("work_id", id)
         .execute()
     )
+
+    if not res.data:
+        return None
+
     # TODO: error control
     return _parse(Work, res.data[0])
 
