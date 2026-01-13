@@ -47,6 +47,32 @@ create or replace function search_text(persons) returns text as $$
         );
 $$ language sql immutable;
 
+-- Persisted search vectors and indexes for efficient lookups
+alter table if exists works
+    add column if not exists search_vector tsvector
+        generated always as (to_tsvector('simple', search_text(works))) stored;
+create index if not exists works_search_vector_idx on works using gin (search_vector);
+
+alter table if exists versions
+    add column if not exists search_vector tsvector
+        generated always as (to_tsvector('simple', search_text(versions))) stored;
+create index if not exists versions_search_vector_idx on versions using gin (search_vector);
+
+alter table if exists releases
+    add column if not exists search_vector tsvector
+        generated always as (to_tsvector('simple', search_text(releases))) stored;
+create index if not exists releases_search_vector_idx on releases using gin (search_vector);
+
+alter table if exists artists
+    add column if not exists search_vector tsvector
+        generated always as (to_tsvector('simple', search_text(artists))) stored;
+create index if not exists artists_search_vector_idx on artists using gin (search_vector);
+
+alter table if exists persons
+    add column if not exists search_vector tsvector
+        generated always as (to_tsvector('simple', search_text(persons))) stored;
+create index if not exists persons_search_vector_idx on persons using gin (search_vector);
+
 -- Unified Search (all entity types minus media item, credit and genre)
 create or replace function unified_search(query_text text, fetch_limit int default 20)
 returns table (
@@ -59,50 +85,69 @@ language sql
 as $$
     with q as (
         select websearch_to_tsquery('simple', query_text) as tsq
+    ),
+    work_matches as (
+        select 'work'::public.entity_type as entity_type,
+               w.work_id as entity_id,
+               w.title as display_text,
+               ts_rank_cd(w.search_vector, q.tsq) as rank
+        from works w, q
+        where w.search_vector @@ q.tsq
+        order by rank desc
+        limit fetch_limit
+    ),
+    version_matches as (
+        select 'version'::public.entity_type,
+               v.version_id,
+               v.title,
+             ts_rank_cd(v.search_vector, q.tsq) as rank
+        from versions v, q
+        where v.search_vector @@ q.tsq
+         order by rank desc
+        limit fetch_limit
+    ),
+    release_matches as (
+        select 'release'::public.entity_type,
+               r.release_id,
+               r.release_title,
+             ts_rank_cd(r.search_vector, q.tsq) as rank
+        from releases r, q
+        where r.search_vector @@ q.tsq
+         order by rank desc
+        limit fetch_limit
+    ),
+    artist_matches as (
+        select 'artist'::public.entity_type,
+               a.artist_id,
+               a.display_name,
+             ts_rank_cd(a.search_vector, q.tsq) as rank
+        from artists a, q
+        where a.search_vector @@ q.tsq
+         order by rank desc
+        limit fetch_limit
+    ),
+    person_matches as (
+        select 'person'::public.entity_type,
+               p.person_id,
+               p.legal_name,
+             ts_rank_cd(p.search_vector, q.tsq) as rank
+        from persons p, q
+        where p.search_vector @@ q.tsq
+         order by rank desc
+        limit fetch_limit
     )
-    select 'work'::public.entity_type as entity_type,
-           w.work_id as entity_id,
-           w.title as display_text,
-           ts_rank_cd(to_tsvector('simple', search_text(w)), q.tsq) as rank
-    from works w, q
-    where to_tsvector('simple', search_text(w)) @@ q.tsq
-
-    union all
-
-    select 'version'::public.entity_type,
-           v.version_id,
-           v.title,
-           ts_rank_cd(to_tsvector('simple', search_text(v)), q.tsq)
-    from versions v, q
-    where to_tsvector('simple', search_text(v)) @@ q.tsq
-
-    union all
-
-    select 'release'::public.entity_type,
-           r.release_id,
-           r.release_title,
-           ts_rank_cd(to_tsvector('simple', search_text(r)), q.tsq)
-    from releases r, q
-    where to_tsvector('simple', search_text(r)) @@ q.tsq
-
-    union all
-
-    select 'artist'::public.entity_type,
-           a.artist_id,
-           a.display_name,
-           ts_rank_cd(to_tsvector('simple', search_text(a)), q.tsq)
-    from artists a, q
-    where to_tsvector('simple', search_text(a)) @@ q.tsq
-
-    union all
-
-    select 'person'::public.entity_type,
-           p.person_id,
-           p.legal_name,
-           ts_rank_cd(to_tsvector('simple', search_text(p)), q.tsq)
-    from persons p, q
-    where to_tsvector('simple', search_text(p)) @@ q.tsq
-
+    select *
+    from (
+        select * from work_matches
+        union all
+        select * from version_matches
+        union all
+        select * from release_matches
+        union all
+        select * from artist_matches
+        union all
+        select * from person_matches
+    ) as combined
     order by rank desc
     limit fetch_limit;
 $$;
