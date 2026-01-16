@@ -40,7 +40,7 @@ class TestSearchEndpoints:
             )
 
             assert response.status_code == 200
-            assert response.json() == [item.model_dump() for item in mock_results]
+            assert response.json() == [item.model_dump(exclude_none=True) for item in mock_results]
             mock_unified_search.assert_awaited_once_with(query, [], 10)
 
     def test_search_limited_entities_success(self):
@@ -65,7 +65,7 @@ class TestSearchEndpoints:
             )
 
             assert response.status_code == 200
-            assert response.json() == [item.model_dump() for item in mock_results]
+            assert response.json() == [item.model_dump(exclude_none=True) for item in mock_results]
             mock_unified_search.assert_awaited_once_with(query, [EntityType.WORK], 10)
 
     def test_search_all_invalid_limit(self):
@@ -118,7 +118,7 @@ class TestWorksEndpoints:
             response = client.get("/works/work-1")
 
             assert response.status_code == 200
-            assert response.json() == work.model_dump()
+            assert response.json() == work.model_dump(exclude_none=True)
             mock_get_by_id.assert_awaited_once_with("work-1")
 
     def test_get_work_by_id_not_found(self):
@@ -147,7 +147,7 @@ class TestWorksEndpoints:
             response = client.get("/works", params={"query": query})
 
             assert response.status_code == 200
-            assert response.json() == [item.model_dump() for item in works_list]
+            assert response.json() == [item.model_dump(exclude_none=True) for item in works_list]
             mock_search.assert_awaited_once_with(query)
 
     def test_search_works_requires_query(self):
@@ -185,7 +185,7 @@ class TestArtistsEndpoints:
             response = client.get("/artists/artist-1")
 
             assert response.status_code == 200
-            assert response.json() == artist.model_dump()
+            assert response.json() == artist.model_dump(exclude_none=True)
             mock_get_by_id.assert_awaited_once_with("artist-1")
 
     def test_get_artist_by_id_not_found(self):
@@ -212,7 +212,7 @@ class TestArtistsEndpoints:
             response = client.get("/artists", params={"query": query})
 
             assert response.status_code == 200
-            assert response.json() == [artist.model_dump(), person.model_dump()]
+            assert response.json() == [artist.model_dump(exclude_none=True), person.model_dump(exclude_none=True)]
             mock_search.assert_awaited_once_with(query)
 
     def test_search_artists_requires_query(self):

@@ -86,7 +86,7 @@ class Work(BaseModel):
     identifiers: Optional[List[Dict[str, Any]]] = None
     origin_year_start: Optional[int] = None
     origin_year_end: Optional[int] = None
-    origin_country: Optional[int] = None
+    origin_country: Optional[str] = None
     themes: Optional[List[str]] = None
     sentiment: Optional[str] = None
     notes: Optional[str] = None
@@ -272,7 +272,6 @@ class Credit(BaseModel):
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Credit":
-        print(data)
         return cls(
             id=data["credit_id"],
             work=_parse(Work, data.get("work")),

@@ -20,7 +20,8 @@ async def get_by_id(id: str) -> Work:
                     *,
                     person:persons(*),
                     artist:artists(*, person:persons(*), artist_memberships(persons(*)))
-                )
+                ),
+                primary_artist:artists!fk_versions_primary_artist(*, person:persons(*), artist_memberships(*, person:persons(*)))
             ),
             work_genres(genres(*)),
             credits(*, person:persons(*), artist:artists(*, artist_memberships(*, person:persons(*))))
