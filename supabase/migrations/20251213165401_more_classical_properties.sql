@@ -16,7 +16,7 @@ alter table if exists artists
     drop column if exists start_date,
     drop column if exists end_date,
     add column if not exists start_year int,
-    add column if not exists end_year int
+    add column if not exists end_year int,
     add column if not exists identifiers jsonb;
 
 alter table if exists artist_memberships

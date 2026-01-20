@@ -1,7 +1,8 @@
 from typing import List, Optional
 
 from music_catalogue.crud.supabase_client import get_supabase
-from music_catalogue.models import Work, _parse, _parse_list
+from music_catalogue.models.utils import _parse, _parse_list
+from music_catalogue.models.works import Work
 
 
 async def get_by_id(id: str) -> Work:

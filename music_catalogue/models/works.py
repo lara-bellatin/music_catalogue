@@ -4,7 +4,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from music_catalogue.models.artists import Artist, Person
+from music_catalogue.models.artists import Artist
+from music_catalogue.models.persons import Person
 from music_catalogue.models.utils import _parse, _parse_list
 
 

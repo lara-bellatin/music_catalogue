@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from music_catalogue.crud import unified_search
-from music_catalogue.models import EntityType, UnifiedSearchResult
+from music_catalogue.models.utils import EntityType, UnifiedSearchResult
 
 
 class TestUnifiedSearch:

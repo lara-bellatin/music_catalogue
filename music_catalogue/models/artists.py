@@ -1,35 +1,15 @@
-from datetime import date
 from enum import Enum
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from music_catalogue.models.persons import Person
 from music_catalogue.models.utils import _parse, _parse_list
 
 
 class ArtistType(str, Enum):
     SOLO = "solo"
     GROUP = "group"
-
-
-class Person(BaseModel):
-    id: str
-    legal_name: str
-    birth_date: Optional[date] = None
-    death_date: Optional[date] = None
-    pronouns: Optional[str] = None
-    notes: Optional[str] = None
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> "Person":
-        return cls(
-            id=data["person_id"],
-            legal_name=data["legal_name"],
-            birth_date=date.fromisoformat(data.get("birth_date")) if data.get("birth_date") else None,
-            death_date=date.fromisoformat(data.get("death_date")) if data.get("death_date") else None,
-            pronouns=data.get("pronouns"),
-            notes=data.get("notes"),
-        )
 
 
 class Artist(BaseModel):
@@ -78,6 +58,25 @@ class ArtistMembership(BaseModel):
             role=data.get("role"),
             notes=data.get("notes"),
         )
+
+
+class ArtistMembershipCreate(BaseModel):
+    person_id: str
+    start_year: Optional[int] = None
+    end_year: Optional[int] = None
+    role: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ArtistCreate(BaseModel):
+    artist_type: ArtistType
+    display_name: str
+    sort_name: Optional[str] = None
+    alternative_names: Optional[List[str]] = None
+    start_year: Optional[int] = None
+    end_year: Optional[int] = None
+    person_id: Optional[str] = None
+    members: Optional[List[ArtistMembershipCreate]] = Field(default_factory=list)
 
 
 Artist.model_rebuild()

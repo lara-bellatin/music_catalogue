@@ -50,27 +50,40 @@ $$ language sql immutable;
 -- Persisted search vectors and indexes for efficient lookups
 alter table if exists works
     add column if not exists search_vector tsvector
-        generated always as (to_tsvector('simple', search_text(works))) stored;
+        generated always as (to_tsvector('simple', trim(
+            coalesce(title, '') || ' ' ||
+            coalesce(titles::text, '') || ' ' ||
+            coalesce(description, '') || ' ' ||
+            coalesce(identifiers::text, '')
+        ))) stored;
 create index if not exists works_search_vector_idx on works using gin (search_vector);
 
 alter table if exists versions
     add column if not exists search_vector tsvector
-        generated always as (to_tsvector('simple', search_text(versions))) stored;
+        generated always as (to_tsvector('simple', coalesce(title, ''))) stored;
 create index if not exists versions_search_vector_idx on versions using gin (search_vector);
 
 alter table if exists releases
     add column if not exists search_vector tsvector
-        generated always as (to_tsvector('simple', search_text(releases))) stored;
+        generated always as (to_tsvector('simple', trim(
+            coalesce(release_title, '') || ' ' ||
+            coalesce(catalog_number, '') || ' ' ||
+            coalesce(publisher_number, '')
+        ))) stored;
 create index if not exists releases_search_vector_idx on releases using gin (search_vector);
 
 alter table if exists artists
     add column if not exists search_vector tsvector
-        generated always as (to_tsvector('simple', search_text(artists))) stored;
+        generated always as (to_tsvector('simple', trim(
+            coalesce(display_name, '') || ' ' ||
+            coalesce(sort_name, '') || ' ' ||
+            coalesce(alternative_names::text, '')
+        ))) stored;
 create index if not exists artists_search_vector_idx on artists using gin (search_vector);
 
 alter table if exists persons
     add column if not exists search_vector tsvector
-        generated always as (to_tsvector('simple', search_text(persons))) stored;
+        generated always as (to_tsvector('simple', coalesce(legal_name, ''))) stored;
 create index if not exists persons_search_vector_idx on persons using gin (search_vector);
 
 -- Unified Search (all entity types minus media item, credit and genre)

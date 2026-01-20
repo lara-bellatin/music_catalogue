@@ -1,10 +1,12 @@
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from music_catalogue.crud import artists, unified_search, works
-from music_catalogue.models import Artist, EntityType, Person, UnifiedSearchResult, Work
+from music_catalogue.crud import unified_search, works
+from music_catalogue.models.utils import EntityType, UnifiedSearchResult
+from music_catalogue.models.works import Work
+from music_catalogue.routers import artists, persons
 
 app = FastAPI()
 
@@ -15,6 +17,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(artists.router)
+app.include_router(persons.router)
 
 
 # Unified Search
@@ -45,20 +50,3 @@ async def search_works(query: str = Query(min_length=2, max_length=50)):
     Searches for works based on a query string.
     """
     return await works.search(query)
-
-
-# Artists
-@app.get("/artists/{id}", tags=["Artists"], response_model=Artist, response_model_exclude_none=True)
-async def get_artist_by_id(id: str):
-    """
-    Gets an artist by its internal ID.
-    """
-    return await artists.get_by_id(id)
-
-
-@app.get("/artists", tags=["Artists"], response_model=List[Union[Artist, Person]], response_model_exclude_none=True)
-async def search_artists(query: str = Query(min_length=2, max_length=50)):
-    """
-    Searches for artists based on a query string.
-    """
-    return await artists.search(query)

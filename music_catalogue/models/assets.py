@@ -4,9 +4,9 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from music_catalogue.models import ReleaseMediaItem
 from music_catalogue.models.users import User
 from music_catalogue.models.utils import AnyEntityType, EntityType
+from music_catalogue.models.works import ReleaseMediaItem
 
 
 class AssetType(str, Enum):

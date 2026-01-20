@@ -85,7 +85,7 @@ create table if not exists artists (
     sort_name text,
     start_date date,
     end_date date,
-    alternative_names text[],
+    alternative_names jsonb,
     notes text,
     constraint fk_artists_person foreign key (person_id) references persons(person_id)
 );
@@ -111,7 +111,7 @@ create table if not exists works (
     description text,
     origin_year int,
     origin_country text,
-    themes text[],
+    themes jsonb,
     sentiment text,
     notes text
 );
@@ -196,7 +196,7 @@ create table if not exists credits (
     role text not null,
     is_primary boolean default false,
     credit_order int,
-    instruments text[],
+    instruments jsonb,
     notes text,
     constraint fk_credits_version foreign key (version_id) references versions(version_id) on delete cascade,
     constraint fk_credits_artist foreign key (artist_id) references artists(artist_id),

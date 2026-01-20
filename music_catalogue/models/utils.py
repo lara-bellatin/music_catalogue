@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING, Dict, List, Union
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from music_catalogue.models.artists import Artist, Person
+    from music_catalogue.models.artists import Artist
+    from music_catalogue.models.persons import Person
     from music_catalogue.models.works import Credit, Genre, Release, ReleaseMediaItem, Version, Work
 
 
