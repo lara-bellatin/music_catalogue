@@ -3,8 +3,9 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from music_catalogue.models.exceptions import ValidationError
 from music_catalogue.models.persons import Person
-from music_catalogue.models.utils import _parse, _parse_list
+from music_catalogue.models.utils import _parse, _parse_list, validate_start_and_end_years, validate_uuid
 
 
 class ArtistType(str, Enum):
@@ -67,6 +68,17 @@ class ArtistMembershipCreate(BaseModel):
     role: Optional[str] = None
     notes: Optional[str] = None
 
+    def validate(self):
+        try:
+            # Validate person ID format
+            validate_uuid(self.person_id)
+            # Validate start or end years
+            validate_start_and_end_years(self.start_year, self.end_year)
+        except ValidationError as e:
+            raise ValidationError(
+                f"Invalid member configuration for person with ID {self.person_id}: {str(e)}"
+            ) from None
+
 
 class ArtistCreate(BaseModel):
     artist_type: ArtistType
@@ -77,6 +89,30 @@ class ArtistCreate(BaseModel):
     end_year: Optional[int] = None
     person_id: Optional[str] = None
     members: Optional[List[ArtistMembershipCreate]] = Field(default_factory=list)
+
+    def validate(self):
+        # Raise for invalid start or end years
+        validate_start_and_end_years(self.start_year, self.end_year)
+
+        if self.artist_type == ArtistType.SOLO:
+            # Raise if no person_id for SOLO artist
+            if not self.person_id:
+                raise ValidationError("Missing person ID for SOLO type artist")
+            # Validate person UUID and raise if invalid
+            validate_uuid(self.person_id)
+            # Raise if there are members for SOLO artist
+            if self.members:
+                raise ValidationError("There cannot be members for a SOLO type artist")
+        else:
+            # Raise if no members for GROUP artist
+            if not self.members:
+                raise ValidationError("Missing members for GROUP type artist")
+            # Raise if there's a person_id for artist
+            if self.person_id:
+                raise ValidationError("Invalid assignment of person to GROUP type artist")
+            # Validate person ID and start and end years for each member
+            for member in self.members:
+                member.validate()
 
 
 Artist.model_rebuild()

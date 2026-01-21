@@ -145,14 +145,12 @@ class TestPersonsCRUD:
             query_builder.text_search.assert_called_once_with("search_text", "carl+nielsen")
 
     @pytest.mark.asyncio
-    async def test_create_person_success_with_dates(self):
-        """Test creating a person with birth and death dates."""
-        person_data = PersonCreate(
-            legal_name="Carl Nielsen",
-            birth_date="1865-06-09",
-            death_date="1931-10-03",
-            pronouns="he/him",
-        )
+    async def test_create_person_success(self):
+        """Test creating a person succesfully."""
+        person_data = MagicMock(spec=PersonCreate)
+        person_data.legal_name = "Carl Nielsen"
+        person_data.pronouns = "he/him"
+        person_data.validate = MagicMock(return_value=None)
 
         mock_supabase = MagicMock()
         persons_table = MagicMock()
@@ -166,9 +164,6 @@ class TestPersonsCRUD:
 
         with (
             patch("music_catalogue.crud.persons.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
-            patch(
-                "music_catalogue.crud.persons.validate_start_and_end_dates", return_value=None
-            ) as mock_validate_dates,
             patch("music_catalogue.crud.persons._parse", return_value=mock_person) as mock_parse,
         ):
             mock_get_supabase.return_value = mock_supabase
@@ -176,65 +171,26 @@ class TestPersonsCRUD:
             result = await persons.create(person_data)
 
             assert result is mock_person
-            mock_validate_dates.assert_called_once_with("1865-06-09", "1931-10-03")
+            person_data.validate.assert_called_once()
             mock_supabase.table.assert_called_once_with("persons")
             persons_table.insert.assert_called_once_with(expected_payload)
             mock_parse.assert_called_once_with(Person, {"person_id": "person-uuid"})
 
     @pytest.mark.asyncio
-    async def test_create_person_success_without_death_date(self):
-        """Test creating a person without a death date skips validation."""
-        person_data = PersonCreate(
-            legal_name="Living Composer",
-            birth_date="1980-01-01",
-        )
-
-        mock_supabase = MagicMock()
-        persons_table = MagicMock()
-        persons_table.insert.return_value = persons_table
-        persons_table.execute = AsyncMock(return_value=MagicMock(data=[{"person_id": "person-abc"}]))
-        mock_supabase.table.return_value = persons_table
-
-        mock_person = MagicMock(spec=Person)
-        expected_payload = person_data.model_dump(exclude_none=True)
-
-        with (
-            patch("music_catalogue.crud.persons.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
-            patch("music_catalogue.crud.persons.validate_start_and_end_dates") as mock_validate_dates,
-            patch("music_catalogue.crud.persons._parse", return_value=mock_person) as mock_parse,
-        ):
-            mock_get_supabase.return_value = mock_supabase
-
-            result = await persons.create(person_data)
-
-            assert result is mock_person
-            mock_validate_dates.assert_not_called()
-            mock_supabase.table.assert_called_once_with("persons")
-            persons_table.insert.assert_called_once_with(expected_payload)
-            mock_parse.assert_called_once_with(Person, {"person_id": "person-abc"})
-
-    @pytest.mark.asyncio
     async def test_create_person_validation_error(self):
         """Test validation errors propagate during person creation."""
-        person_data = PersonCreate(
-            legal_name="Invalid Dates",
-            birth_date="2000-01-01",
-            death_date="1990-01-01",
-        )
+        person_data = MagicMock(spec=PersonCreate)
+        person_data.validate.side_effect = ValidationError("Test validation error")
 
         mock_supabase = MagicMock()
 
         with (
             patch("music_catalogue.crud.persons.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
-            patch(
-                "music_catalogue.crud.persons.validate_start_and_end_dates",
-                side_effect=ValidationError("Invalid chronology"),
-            ),
         ):
             mock_get_supabase.return_value = mock_supabase
 
             with pytest.raises(ValidationError) as exc_info:
                 await persons.create(person_data)
 
-            assert "Invalid chronology" in str(exc_info.value)
+            assert "Test validation error" in str(exc_info.value)
             mock_supabase.table.assert_not_called()

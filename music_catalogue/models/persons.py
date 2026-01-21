@@ -3,6 +3,8 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel
 
+from music_catalogue.models.utils import validate_start_and_end_dates
+
 
 class Person(BaseModel):
     id: str
@@ -30,3 +32,6 @@ class PersonCreate(BaseModel):
     death_date: Optional[str] = None
     pronouns: Optional[str] = None
     notes: Optional[str] = None
+
+    def validate(self):
+        validate_start_and_end_dates(self.birth_date, self.death_date)

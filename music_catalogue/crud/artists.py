@@ -1,10 +1,9 @@
 from typing import List, Optional
 
 from music_catalogue.crud.supabase_client import get_supabase
-from music_catalogue.crud.utils import validate_start_and_end_years, validate_uuid
-from music_catalogue.models.artists import Artist, ArtistCreate, ArtistMembership, ArtistType
-from music_catalogue.models.exceptions import APIError, ValidationError
-from music_catalogue.models.utils import _parse, _parse_list
+from music_catalogue.models.artists import Artist, ArtistCreate, ArtistMembership
+from music_catalogue.models.exceptions import APIError
+from music_catalogue.models.utils import _parse, _parse_list, validate_uuid
 from supabase import PostgrestAPIError
 
 
@@ -99,36 +98,10 @@ async def create(artist_data: ArtistCreate) -> Artist:
         APIError: If Supabase throws an error
     """
     try:
-        supabase = await get_supabase()
-        if artist_data.artist_type == ArtistType.SOLO:
-            # Raise if no person_id for SOLO artist
-            if not artist_data.person_id:
-                raise ValidationError("Missing person ID for SOLO type artist")
-            # Validate person UUID
-            validate_uuid(artist_data.person_id)
-            # Raise if members for SOLO artist
-            if artist_data.members:
-                raise ValidationError("There cannot be members for a SOLO type artist")
-        else:
-            # Raise if no members for GROUP artist
-            if not artist_data.members:
-                raise ValidationError("Missing members for GROUP type artist")
-            # Raise if person_id for artist
-            if artist_data.person_id:
-                raise ValidationError("Invalid assignment of person to GROUP type artist")
-            # Validate person ID and start and end years for each member
-            for member in artist_data.members:
-                try:
-                    validate_uuid(member.person_id)
-                    if member.start_year and member.end_year:
-                        validate_start_and_end_years(member.start_year, member.end_year)
-                except ValidationError as e:
-                    raise ValidationError(
-                        f"Invalid member configuration for person with ID {member.person_id}: {str(e)}"
-                    )
+        # Validate artist data is complete
+        artist_data.validate()
 
-        if artist_data.start_year and artist_data.end_year:
-            validate_start_and_end_years(artist_data.start_year, artist_data.end_year)
+        supabase = await get_supabase()
 
         # Create artist
         res = await (

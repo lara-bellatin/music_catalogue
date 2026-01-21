@@ -1,10 +1,9 @@
 from typing import List, Optional
 
 from music_catalogue.crud.supabase_client import get_supabase
-from music_catalogue.crud.utils import validate_start_and_end_dates, validate_uuid
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.persons import Person, PersonCreate
-from music_catalogue.models.utils import _parse, _parse_list
+from music_catalogue.models.utils import _parse, _parse_list, validate_uuid
 from supabase import PostgrestAPIError
 
 
@@ -74,9 +73,8 @@ async def create(person_data: PersonCreate) -> Person:
         APIError: If Supabase throws an error
     """
     try:
-        # Validate birth and death date if included
-        if person_data.birth_date and person_data.death_date:
-            validate_start_and_end_dates(person_data.birth_date, person_data.death_date)
+        # Validate person data
+        person_data.validate()
 
         supabase = await get_supabase()
         res = await supabase.table("persons").insert(person_data.model_dump(exclude_none=True)).execute()
