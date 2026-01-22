@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from music_catalogue.models.exceptions import ValidationError
 from music_catalogue.models.persons import Person
@@ -22,7 +22,7 @@ class Artist(BaseModel):
     alternative_names: Optional[List[str]] = None
     start_year: Optional[int] = None
     end_year: Optional[int] = None
-    members: List["ArtistMembership"] = Field(default_factory=list)
+    members: Optional[List["ArtistMembership"]] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Artist":
@@ -35,7 +35,7 @@ class Artist(BaseModel):
             alternative_names=data.get("alternative_names"),
             start_year=data.get("start_year"),
             end_year=data.get("end_year"),
-            members=_parse_list(ArtistMembership, data.get("artist_memberships")),
+            members=_parse_list(ArtistMembership, data.get("artist_memberships", None)) or None,
         )
 
 
@@ -88,7 +88,7 @@ class ArtistCreate(BaseModel):
     start_year: Optional[int] = None
     end_year: Optional[int] = None
     person_id: Optional[str] = None
-    members: Optional[List[ArtistMembershipCreate]] = Field(default_factory=list)
+    members: Optional[List[ArtistMembershipCreate]] = None
 
     def validate(self):
         # Raise for invalid start or end years

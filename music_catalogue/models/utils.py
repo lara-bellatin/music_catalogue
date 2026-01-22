@@ -68,7 +68,42 @@ def validate_uuid(uuid: str) -> None:
     try:
         UUID(uuid)
     except ValueError as e:
-        raise ValidationError(f"Invalid UUID format: {str(e)}") from None
+        raise ValidationError(f"Invalid UUID {uuid}: {str(e)}") from None
+
+
+def validate_date(date_str: str) -> date:
+    """
+    Check if a date has a valid format
+
+    Args:
+        date_str (str, optional): The date to check in ISO 8601 format (YYYY-MM-DD)
+
+    Returns:
+        date: The date object the string represents
+
+    Raises:
+        ValidationError: If the date is invalid
+    """
+    try:
+        return date.fromisoformat(date_str)
+    except ValueError as e:
+        raise ValidationError(f"Invalid date format {date_str}: {str(e)}") from None
+
+
+def validate_year(year: int) -> None:
+    """
+    Check if a year is valid
+
+    Args:
+        year (str, optional): The year to check
+
+    Raises:
+        ValidationError: If the year is invalid
+    """
+    try:
+        date(year=year, month=1, day=1)
+    except ValueError as e:
+        raise ValidationError(f"Invalid year {year}: {str(e)}") from None
 
 
 def validate_start_and_end_dates(start_date: Optional[str] = None, end_date: Optional[str] = None) -> None:
@@ -81,18 +116,18 @@ def validate_start_and_end_dates(start_date: Optional[str] = None, end_date: Opt
         end_date (str, optional): The end date to check in ISO 8601 format (YYYY-MM-DD)
 
     Raises:
-        ValidationError: if either of the date strings or their combination is invalid
+        ValidationError: If either of the date strings or their combination is invalid
     """
     try:
         now = datetime.now().date()
         if start_date:
             # Check date is valid and in ISO 8601 format
-            start_date = date.fromisoformat(start_date)
+            start_date = validate_date(start_date)
             # Check date is not in the future
             if start_date > now:
                 raise ValidationError("Start date can't be in the future")
         if end_date:
-            end_date = date.fromisoformat(end_date)
+            end_date = validate_date(end_date)
             if end_date > now:
                 raise ValidationError("End date can't be in the future")
 
@@ -122,12 +157,12 @@ def validate_start_and_end_years(start_year: Optional[int] = None, end_year: Opt
         now = datetime.now().date()
         if start_year:
             # Check year is valid
-            date(year=start_year, month=1, day=1)
+            validate_year(start_year)
             # Check year is not in the future
             if start_year > now.year:
                 raise ValidationError("Start year can't be in the future")
         if end_year:
-            date(year=end_year, month=1, day=1)
+            validate_year(end_year)
             if end_year > now.year:
                 raise ValidationError("End year can't be in the future")
 

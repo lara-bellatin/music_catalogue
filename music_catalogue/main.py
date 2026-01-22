@@ -3,10 +3,9 @@ from typing import List, Optional
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from music_catalogue.crud import unified_search, works
+from music_catalogue.crud import unified_search
 from music_catalogue.models.utils import EntityType, UnifiedSearchResult
-from music_catalogue.models.works import Work
-from music_catalogue.routers import artists, persons
+from music_catalogue.routers import artists, persons, works
 
 app = FastAPI()
 
@@ -20,6 +19,7 @@ app.add_middleware(
 
 app.include_router(artists.router)
 app.include_router(persons.router)
+app.include_router(works.router)
 
 
 # Unified Search
@@ -33,20 +33,3 @@ async def search_all(
     Searches among all entities according to query. Optionally, entities to search among can be limited.
     """
     return await unified_search(query, entity_types or [], limit)
-
-
-# Works
-@app.get("/works/{id}", tags=["Works"], response_model=Work, response_model_exclude_none=True)
-async def get_work_by_id(id: str):
-    """
-    Gets a work by its internal ID.
-    """
-    return await works.get_by_id(id)
-
-
-@app.get("/works", tags=["Works"], response_model=List[Work], response_model_exclude_none=True)
-async def search_works(query: str = Query(min_length=2, max_length=50)):
-    """
-    Searches for works based on a query string.
-    """
-    return await works.search(query)

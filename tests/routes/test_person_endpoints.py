@@ -1,4 +1,4 @@
-"""Integration tests for FastAPI endpoints matching the current API behavior."""
+"""Integration tests for FastAPI endpoints matching the current API behavior for persons."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -97,12 +97,12 @@ class TestPersonEndpoints:
         client = TestClient(app, raise_server_exceptions=False)
 
         with patch("music_catalogue.routers.persons.persons.create", new_callable=AsyncMock) as mock_create:
-            mock_create.side_effect = ValidationError("Invalid chronology")
+            mock_create.side_effect = ValidationError("Invalid")
 
             response = client.post("/persons", json={"legal_name": "Invalid"})
 
             assert response.status_code == 400
-            assert "Invalid chronology" in response.json()["detail"]
+            assert "Invalid" in response.json()["detail"]
 
     def test_create_person_api_error(self):
         """API errors surface as 500 responses for create."""

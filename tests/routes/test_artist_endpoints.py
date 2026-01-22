@@ -1,4 +1,4 @@
-"""Integration tests for FastAPI endpoints matching the current API behavior."""
+"""Integration tests for FastAPI endpoints matching the current API behavior for artists."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 
 from music_catalogue.main import app
 from music_catalogue.models.artists import Artist, ArtistType
+from music_catalogue.models.exceptions import APIError, ValidationError
+from music_catalogue.models.persons import Person
 
 
 class TestArtistsEndpoints:
@@ -70,3 +72,45 @@ class TestArtistsEndpoints:
         response_long = client.get("/artists", params={"query": "x" * 51})
 
         assert response_long.status_code == 422
+
+    def test_create_artist_success(self):
+        """POST /artists returns created artist payload."""
+        client = TestClient(app)
+        payload = {"display_name": "New Artist", "artist_type": ArtistType.SOLO, "person_id": "person-123"}
+        person = Person(id="person-123", legal_name="Artist Person")
+        artist = Artist(id="artist-123", display_name="New Artist", artist_type=ArtistType.SOLO, person=person)
+
+        with patch("music_catalogue.routers.artists.artists.create", new_callable=AsyncMock) as mock_create:
+            mock_create.return_value = artist
+
+            response = client.post("/artists", json=payload)
+
+            assert response.status_code == 201
+            assert response.json() == artist.model_dump(exclude_none=True)
+            mock_create.assert_awaited_once()
+            forwarded_payload = mock_create.await_args.args[0].model_dump(exclude_none=True)
+            assert forwarded_payload == payload
+
+    def test_create_artist_validation_error(self):
+        """Domain validation errors surface as 400 responses."""
+        client = TestClient(app, raise_server_exceptions=False)
+
+        with patch("music_catalogue.routers.artists.artists.create", new_callable=AsyncMock) as mock_create:
+            mock_create.side_effect = ValidationError("Invalid")
+
+            response = client.post("/artists", json={"display_name": "Invalid", "artist_type": ArtistType.SOLO})
+
+            assert response.status_code == 400
+            assert "Invalid" in response.json()["detail"]
+
+    def test_create_artist_api_error(self):
+        """API errors surface as 500 responses for create."""
+        client = TestClient(app, raise_server_exceptions=False)
+
+        with patch("music_catalogue.routers.artists.artists.create", new_callable=AsyncMock) as mock_create:
+            mock_create.side_effect = APIError("Upstream failure")
+
+            response = client.post("/artists", json={"display_name": "Artist", "artist_type": ArtistType.SOLO})
+
+            assert response.status_code == 500
+            assert "Upstream failure" in response.json()["detail"]

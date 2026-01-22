@@ -71,7 +71,7 @@ class TestArtist:
         assert artist.person.id == "person-3"
         assert artist.person.legal_name == "John Smith"
         assert artist.person.birth_date == date(2000, 1, 1)
-        assert artist.members == []
+        assert artist.members is None
 
     def test_missing_required_fields(self):
         payload = {

@@ -5,8 +5,16 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from music_catalogue.models.artists import Artist
+from music_catalogue.models.exceptions import ValidationError
 from music_catalogue.models.persons import Person
-from music_catalogue.models.utils import _parse, _parse_list
+from music_catalogue.models.utils import (
+    _parse,
+    _parse_list,
+    validate_date,
+    validate_start_and_end_years,
+    validate_uuid,
+    validate_year,
+)
 
 
 class VersionType(str, Enum):
@@ -111,7 +119,7 @@ class Work(BaseModel):
             sentiment=data.get("sentiment"),
             notes=data.get("notes"),
             versions=_parse_list(Version, data.get("versions")),
-            genres=_parse_list(Genre, data.get("work_genres")),
+            genres=_parse_list(Genre, [item.get("genres", None) for item in data.get("work_genres", [])]),
             credits=_parse_list(Credit, data.get("credits")),
         )
 
@@ -285,6 +293,75 @@ class Credit(BaseModel):
             instruments=data.get("instruments"),
             notes=data.get("notes"),
         )
+
+
+class WorkCreditCreate(BaseModel):
+    artist_id: Optional[str] = None
+    person_id: Optional[str] = None
+    role: Optional[str] = None
+    is_primary: bool = False
+    credit_order: Optional[int] = None
+    instruments: Optional[List[str]] = None
+    notes: Optional[str] = None
+
+    def validate(self):
+        # Check exactly one of person_id or artist_id
+        if (not self.artist_id and not self.person_id) or (self.artist_id and self.person_id):
+            raise ValidationError("Either person or artist ID is required for credits")
+
+
+class WorkVersionCreate(BaseModel):
+    title: str
+    version_type: VersionType = VersionType.ORIGINAL
+    primary_artist_id: str
+    release_date: Optional[date] = None
+    release_year: Optional[int] = None
+    duration_seconds: Optional[int] = None
+    bpm: Optional[int] = None
+    key_signature: Optional[str] = None
+    lyrics_reference: Optional[str] = None
+    completeness_level: CompletenessLevel = CompletenessLevel.COMPLETE
+    notes: Optional[str] = None
+
+    def validate(self):
+        # Check UUIDs are valid
+        validate_uuid(self.primary_artist_id)
+
+        # Check date and year validity
+        if self.release_date:
+            validate_date(self.release_date)
+        if self.release_year:
+            validate_year(self.release_year)
+
+
+class WorkCreate(BaseModel):
+    title: str
+    language: Optional[str] = None
+    titles: Optional[List[Dict[str, Any]]] = None
+    description: Optional[str] = None
+    identifiers: Optional[List[Dict[str, Any]]] = None
+    origin_year_start: Optional[int] = None
+    origin_year_end: Optional[int] = None
+    origin_country: Optional[str] = None
+    themes: Optional[List[str]] = None
+    sentiment: Optional[str] = None
+    notes: Optional[str] = None
+    genre_ids: Optional[List[str]] = None
+    versions: Optional[List[WorkVersionCreate]] = None
+    credits: Optional[List[WorkCreditCreate]] = None
+
+    def validate(self):
+        # Check origin year start and end
+        validate_start_and_end_years(self.origin_year_start, self.origin_year_end)
+        # If credits, validate them
+        if self.credits:
+            [credit.validate() for credit in self.credits]
+        # If versions, validate them
+        if self.versions:
+            [version.validate() for version in self.versions]
+        # If genre IDs, validate they are UUIDs
+        if self.genre_ids:
+            [validate_uuid(genre_id) for genre_id in self.genre_ids]
 
 
 Work.model_rebuild()
