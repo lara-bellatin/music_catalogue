@@ -1,9 +1,10 @@
 from typing import List, Optional
 
+from music_catalogue.crud import assets
 from music_catalogue.crud.supabase_client import get_supabase
 from music_catalogue.models.exceptions import APIError
-from music_catalogue.models.utils import _parse, _parse_list, validate_uuid
-from music_catalogue.models.works import Work, WorkCreate
+from music_catalogue.models.utils import EntityType, _parse, _parse_list, validate_uuid
+from music_catalogue.models.works import Work, WorkCreate, WorkExternalLink
 from supabase import PostgrestAPIError
 
 
@@ -30,21 +31,39 @@ async def get_by_id(id: str) -> Optional[Work]:
             supabase.table("works")
             .select(
                 """
-                *,
+                work_id,
+                title,
+                language,
+                titles,
+                description,
+                identifiers,
+                origin_year_start,
+                origin_year_end,
+                origin_country,
+                themes,
+                sentiment,
+                notes,
                 versions(
-                    *,
-                    versions!based_on_version_id(*, artist:artists(*)),
-                    artist:artists(*, person:persons(*), artist_memberships(*, person:persons(*))),
-                    release_tracks(*, releases(*)),
-                    credits(
-                        *,
-                        person:persons(*),
-                        artist:artists(*, person:persons(*), artist_memberships(persons(*)))
+                    version_id,
+                    title,
+                    version_type,
+                    primary_artist:artists!fk_versions_primary_artist(
+                        artist_id, display_name
                     ),
-                    primary_artist:artists!fk_versions_primary_artist(*, person:persons(*), artist_memberships(*, person:persons(*)))
+                    release_year,
+                    completeness_level
                 ),
-                work_genres(genres(*)),
-                credits(*, person:persons(*), artist:artists(*, artist_memberships(*, person:persons(*))))
+                work_genres(genres(genre_id, name)),
+                credits(
+                    credit_id,
+                    artist:artists(artist_id, display_name),
+                    person:persons(person_id, legal_name),
+                    role,
+                    is_primary,
+                    credit_order,
+                    instruments,
+                    notes
+                )
             """
             )
             .eq("work_id", id)
@@ -52,7 +71,13 @@ async def get_by_id(id: str) -> Optional[Work]:
             .execute()
         )
 
-        return _parse(Work, res.data)
+        work: Work = _parse(Work, res.data)
+
+        if work:
+            external_links_raw = await assets.get_external_links_raw(EntityType.WORK, entity_id=work.id)
+            work.external_links = _parse_list(WorkExternalLink, external_links_raw)
+
+        return work
     except PostgrestAPIError as e:
         raise APIError(str(e)) from None
     except Exception as e:
@@ -128,7 +153,9 @@ async def create(work_data: WorkCreate) -> Work:
         # Create work
         res = await (
             supabase.table("works")
-            .insert(work_data.model_dump(exclude_none=True, exclude={"genre_ids", "versions", "credits"}))
+            .insert(
+                work_data.model_dump(exclude_none=True, exclude={"genre_ids", "versions", "credits", "external_links"})
+            )
             .execute()
         )
 
@@ -163,16 +190,42 @@ async def create(work_data: WorkCreate) -> Work:
                 .execute()
             )
 
+        # Create external links
+        if work_data.external_links:
+            await (
+                supabase.table("external_links")
+                .insert(
+                    [
+                        {
+                            "entity_type": EntityType.WORK.value,
+                            "entity_id": work.id,
+                            **link.model_dump(exclude_none=True),
+                            # TODO: Remove hardcoded value once user implementation is done
+                            "added_by": "760c6a23-cf19-4e59-89aa-f6921943bc26",
+                        }
+                        for link in work_data.external_links
+                    ]
+                )
+                .execute()
+            )
+
         # Get work by ID to include complete information
         return await get_by_id(work.id)
 
     except PostgrestAPIError as e:
         # Roll back work creation and its relationships if any relationship creation fails
         if work and work.id:
-            await supabase.table("works").delete().eq("work_id", work.id).execute()
             await supabase.table("versions").delete().eq("work_id", work.id).execute()
             await supabase.table("credits").delete().eq("work_id", work.id).execute()
             await supabase.table("work_genres").delete().eq("work_id", work.id).execute()
+            await (
+                supabase.table("external_links")
+                .delete()
+                .eq("entity_type", EntityType.WORK)
+                .eq("entity_id", work.id)
+                .execute()
+            )
+            await supabase.table("works").delete().eq("work_id", work.id).execute()
         raise APIError(str(e)) from None
     except Exception as e:
         raise e

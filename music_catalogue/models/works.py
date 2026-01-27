@@ -86,6 +86,16 @@ class Genre(BaseModel):
         )
 
 
+class WorkExternalLink(BaseModel):
+    label: str
+    url: str
+    source_verified: bool = False
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "WorkExternalLink":
+        return cls(label=data["label"], url=data["url"], source_verified=data["source_verified"])
+
+
 class Work(BaseModel):
     id: str
     title: str
@@ -102,6 +112,7 @@ class Work(BaseModel):
     versions: List["Version"] = Field(default_factory=list)
     genres: List[Genre] = Field(default_factory=list)
     credits: List["Credit"] = Field(default_factory=list)
+    external_links: List[WorkExternalLink] = Field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Work":
@@ -349,6 +360,7 @@ class WorkCreate(BaseModel):
     genre_ids: Optional[List[str]] = None
     versions: Optional[List[WorkVersionCreate]] = None
     credits: Optional[List[WorkCreditCreate]] = None
+    external_links: Optional[List[WorkExternalLink]] = None
 
     def validate(self):
         # Check origin year start and end

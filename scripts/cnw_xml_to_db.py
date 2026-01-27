@@ -31,6 +31,12 @@ class ExtractedTitle(TypedDict):
     type: str
 
 
+class ExtractedExternalLink(TypedDict):
+    label: str
+    url: str
+    source_verified: bool = True
+
+
 class ExtractedWorkData(TypedDict):
     title: str
     language: str
@@ -40,6 +46,7 @@ class ExtractedWorkData(TypedDict):
     origin_year_end: Optional[int] = None
     history: Optional[str] = None
     contributors: Optional[List[ExtractedContributor]] = None
+    external_links: Optional[List[Dict[str, Any]]] = None
 
 
 def _strip(text: Optional[str]) -> Optional[str]:
@@ -139,6 +146,11 @@ def transform_mei(source: str) -> Dict[str, Any]:
     origin_year_start, origin_year_end = parse_creation_dates(work_element)
     history_text = parse_history(work_element)
     contributors = parse_contributors(work_element)
+    external_link = ExtractedExternalLink(
+        label="Catalogue of Carl Nielsen's Works",
+        url=source,
+        source_verified=True,
+    )
 
     work_payload: Dict[str, Any] = ExtractedWorkData(
         title=title,
@@ -149,6 +161,7 @@ def transform_mei(source: str) -> Dict[str, Any]:
         origin_year_end=origin_year_end,
         history=history_text,
         contributors=contributors,
+        external_links=[external_link],
     )
 
     return work_payload
@@ -178,6 +191,7 @@ async def add_to_database(extracted_data: ExtractedWorkData) -> Work:
             origin_year_start=extracted_data.get("origin_year_start"),
             origin_year_end=extracted_data.get("origin_year_end"),
             notes=extracted_data.get("history"),
+            external_links=extracted_data.get("external_links"),
             credits=credits or None,
         )
     )

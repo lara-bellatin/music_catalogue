@@ -7,7 +7,7 @@ from music_catalogue.crud import unified_search
 from music_catalogue.models.utils import EntityType, UnifiedSearchResult
 from music_catalogue.routers import artists, persons, works
 
-app = FastAPI()
+app = FastAPI(title="Music Catalogue API")
 
 app.add_middleware(
     CORSMiddleware,

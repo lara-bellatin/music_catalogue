@@ -6,7 +6,7 @@ import pytest
 
 from music_catalogue.crud import works
 from music_catalogue.models.exceptions import ValidationError
-from music_catalogue.models.works import Work, WorkCreate, WorkCreditCreate, WorkVersionCreate
+from music_catalogue.models.works import Work, WorkCreate, WorkCreditCreate, WorkExternalLink, WorkVersionCreate
 
 
 class TestWorksCRUD:
@@ -24,10 +24,14 @@ class TestWorksCRUD:
         query_builder.execute = AsyncMock(return_value=MagicMock(data=mock_work_data))
         mock_supabase.table.return_value = query_builder
 
+        mock_work = MagicMock(spec=Work)
+        mock_work.id = "work-1"
+
         with (
             patch("music_catalogue.crud.works.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
-            patch("music_catalogue.crud.works._parse", return_value=MagicMock(spec=Work)) as mock_parse,
+            patch("music_catalogue.crud.works._parse", return_value=mock_work) as mock_parse,
             patch("music_catalogue.crud.works.validate_uuid", return_value=None) as mock_validate,
+            patch("music_catalogue.crud.works.assets.get_external_links_raw", return_value=[]),
         ):
             mock_get_supabase.return_value = mock_supabase
 
@@ -144,6 +148,7 @@ class TestWorksCRUD:
         work_data.versions = []
         work_data.credits = []
         work_data.genre_ids = []
+        work_data.external_links = []
 
         mock_supabase = MagicMock()
         works_table = MagicMock()
@@ -184,6 +189,7 @@ class TestWorksCRUD:
         work_data.versions = [MagicMock(spec=WorkVersionCreate)]
         work_data.credits = [MagicMock(spec=WorkCreditCreate)]
         work_data.genre_ids = ["genre-1"]
+        work_data.external_links = [MagicMock(spec=WorkExternalLink)]
 
         mock_supabase = MagicMock()
 
@@ -211,6 +217,12 @@ class TestWorksCRUD:
         work_genres_table = MagicMock()
         work_genres_table.insert.return_value = work_genres_insert_builder
 
+        # Mock for external_links table insert
+        external_links_insert_builder = MagicMock()
+        external_links_insert_builder.execute = AsyncMock(return_value=MagicMock(data=[]))
+        external_links_table = MagicMock()
+        external_links_table.insert.return_value = external_links_insert_builder
+
         # Mock for get_by_id query
         get_by_id_builder = MagicMock()
         get_by_id_builder.select.return_value = get_by_id_builder
@@ -230,6 +242,8 @@ class TestWorksCRUD:
                 return credits_table
             elif name == "work_genres":
                 return work_genres_table
+            elif name == "external_links":
+                return external_links_table
             return MagicMock()
 
         mock_supabase.table.side_effect = table_side_effect
@@ -239,7 +253,9 @@ class TestWorksCRUD:
 
         mock_final_work = MagicMock(spec=Work)
 
-        expected_payload = work_data.model_dump(exclude_none=True, exclude={"genre_ids", "versions", "credits"})
+        expected_payload = work_data.model_dump(
+            exclude_none=True, exclude={"genre_ids", "versions", "credits", "external_links"}
+        )
 
         with (
             patch("music_catalogue.crud.works.get_supabase", new_callable=AsyncMock) as mock_get_supabase,

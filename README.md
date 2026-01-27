@@ -16,6 +16,7 @@ music_catalogue/
 │   ├── crud/             # Supabase access helpers for entities and general search
 │   ├── models/           # Pydantic domain models and parsing utilities
 │   └── main.py           # FastAPI application wiring endpoints to CRUD layer
+├── scripts/              # Scripts to populate the database from different external catalogues
 ├── supabase/             # Local Supabase configuration and SQL migrations
 ├── tests/                # Pytest suites for CRUD modules and API routes
 ├── pyproject.toml        # Poetry configuration and dependency definitions
@@ -63,6 +64,18 @@ poetry run uvicorn music_catalogue.main:app --reload
 | GET    | `/artists`      | Search artists and people by text query     |
 
 Query parameters are validated using FastAPI `Query` definitions (e.g., `min_length=2`, `max_length=50`, `limit` range `1-100`).
+
+## Running XML to DB Migration Scripts
+### Catalogue of Carl Nielsen's Works
+To extract and display information:
+```bash
+python scripts/cnw_xml_to_db.py "{xml_file_url}"
+```
+
+To extract, display, and save data to the database:
+```bash
+python scripts/cnw_xml_to_db.py --save "{xml_file_url}"
+```
 
 ## Testing and Quality Gates
 Run the full test suite:
