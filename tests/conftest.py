@@ -38,21 +38,9 @@ def test_client() -> TestClient:
 
 # Test data fixtures
 @pytest.fixture
-def sample_work_id() -> str:
-    """Sample work ID for testing."""
+def sample_uuid() -> str:
+    """Sample valid UUID for testing."""
     return "fe9032cc-1b14-402b-b5f5-0151176b1d1c"
-
-
-@pytest.fixture
-def sample_artist_id() -> str:
-    """Sample artist ID for testing."""
-    return "c12d0e37-c1ea-4603-b6bf-3084a9d0b813"
-
-
-@pytest.fixture
-def sample_search_query() -> str:
-    """Sample search query for testing."""
-    return "jonas"
 
 
 @pytest.fixture

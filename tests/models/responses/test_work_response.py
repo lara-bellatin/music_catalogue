@@ -1,27 +1,24 @@
-import uuid
 from datetime import date
 
 import pytest
 
-from music_catalogue.models.exceptions import ValidationError
-from music_catalogue.models.works import (
+from music_catalogue.models.responses.works import (
+    Genre,
+    Release,
+    ReleaseMediaItem,
+    ReleaseTrack,
+    Version,
+    Work,
+    WorkCredit,
+)
+from music_catalogue.models.types import (
     AudioChannel,
     AvailabilityStatus,
     CompletenessLevel,
-    Credit,
-    Genre,
     MediumType,
-    Release,
     ReleaseCategory,
-    ReleaseMediaItem,
     ReleaseStage,
-    ReleaseTrack,
-    Version,
     VersionType,
-    Work,
-    WorkCreate,
-    WorkCreditCreate,
-    WorkVersionCreate,
 )
 
 
@@ -269,14 +266,12 @@ class TestRelease:
             ReleaseTrack.from_dict(payload)
 
 
-class TestCredit:
-    """Test the Credit model"""
+class TestWorkCredit:
+    """Test the WorkCredit model"""
 
     def test_credit_from_dict_with_related_entities(self):
         payload = {
             "credit_id": "credit-99",
-            "work": None,
-            "version": None,
             "artist": {
                 "artist_id": "artist-42",
                 "artist_type": "solo",
@@ -293,7 +288,7 @@ class TestCredit:
             "notes": "Lead performance",
         }
 
-        credit = Credit.from_dict(payload)
+        credit = WorkCredit.from_dict(payload)
 
         assert credit.id == "credit-99"
         assert credit.role == "Vocals"
@@ -301,141 +296,10 @@ class TestCredit:
         assert credit.credit_order == 1
         assert credit.instruments == ["Voice"]
         assert credit.notes == "Lead performance"
-        assert credit.work is None
-        assert credit.version is None
         assert credit.artist is not None and credit.artist.display_name == "Featured Artist"
         assert credit.person is not None and credit.person.legal_name == "Featured Person"
 
     def test_credit_from_dict_missing_required_field(self):
         payload = {"role": "Vocals"}
         with pytest.raises(KeyError):
-            Credit.from_dict(payload)
-
-
-class TestWorkCreditCreate:
-    """Tests for WorkCreditCreate model."""
-
-    def test_validate_with_person_id_success(self):
-        credit = WorkCreditCreate(person_id=str(uuid.uuid4()), role="Composer")
-
-        credit.validate()
-
-    def test_validate_with_artist_id_success(self):
-        credit = WorkCreditCreate(artist_id=str(uuid.uuid4()), role="Composer")
-
-        credit.validate()
-
-    def test_validate_missing_identifiers_raises(self):
-        credit = WorkCreditCreate(role="Composer")
-
-        with pytest.raises(ValidationError) as exc_info:
-            credit.validate()
-
-        assert "Either person or artist ID" in str(exc_info.value)
-
-    def test_validate_both_identifiers_raises(self):
-        credit = WorkCreditCreate(
-            person_id=str(uuid.uuid4()),
-            artist_id=str(uuid.uuid4()),
-            role="Composer",
-        )
-
-        with pytest.raises(ValidationError) as exc_info:
-            credit.validate()
-
-        assert "Either person or artist ID" in str(exc_info.value)
-
-
-class TestWorkVersionCreate:
-    """Tests for WorkVersionCreate model."""
-
-    def test_validate_success(self):
-        version = WorkVersionCreate(
-            title="A Work Version",
-            primary_artist_id=str(uuid.uuid4()),
-            version_type=VersionType.LIVE,
-            release_year=1990,
-            duration_seconds=480,
-        )
-
-        version.validate()
-
-    def test_validate_invalid_primary_artist_uuid_raises(self):
-        version = WorkVersionCreate(
-            title="Invalid Artist",
-            primary_artist_id="not-a-uuid",
-        )
-
-        with pytest.raises(ValidationError) as exc_info:
-            version.validate()
-
-        assert "Invalid UUID" in str(exc_info.value)
-
-    def test_validate_invalid_release_year_raises(self):
-        version = WorkVersionCreate(
-            title="Impossible Year",
-            primary_artist_id=str(uuid.uuid4()),
-            release_year=1234567890,
-        )
-
-        with pytest.raises(ValidationError) as exc_info:
-            version.validate()
-
-        assert "Invalid year" in str(exc_info.value)
-
-
-class TestWorkCreate:
-    """Tests for WorkCreate model."""
-
-    def test_validate_success(self):
-        work = WorkCreate(
-            title="A Work",
-            origin_year_start=1900,
-            origin_year_end=1950,
-            genre_ids=[str(uuid.uuid4())],
-            credits=[WorkCreditCreate(person_id=str(uuid.uuid4()), role="Composer")],
-            versions=[
-                WorkVersionCreate(
-                    title="A Version",
-                    primary_artist_id=str(uuid.uuid4()),
-                    version_type=VersionType.ORIGINAL,
-                )
-            ],
-        )
-
-        work.validate()
-
-    def test_validate_invalid_year_range_raises(self):
-        work = WorkCreate(title="Invalid Years", origin_year_start=2000, origin_year_end=1990)
-
-        with pytest.raises(ValidationError) as exc_info:
-            work.validate()
-
-        assert "Start year" in str(exc_info.value)
-
-    def test_validate_invalid_credit_raises(self):
-        work = WorkCreate(title="Missing Credit IDs", credits=[WorkCreditCreate(role="Composer")])
-
-        with pytest.raises(ValidationError) as exc_info:
-            work.validate()
-
-        assert "Either person or artist ID" in str(exc_info.value)
-
-    def test_validate_invalid_genre_id_raises(self):
-        work = WorkCreate(title="Invalid Genre ID", genre_ids=["not-a-uuid"])
-
-        with pytest.raises(ValidationError) as exc_info:
-            work.validate()
-
-        assert "Invalid UUID" in str(exc_info.value)
-
-    def test_validate_invalid_version_propagates(self):
-        work = WorkCreate(
-            title="Invalid Version",
-            versions=[WorkVersionCreate(title="Broken", primary_artist_id="not-a-uuid")],
-        )
-
-        with pytest.raises(ValidationError) as exc_info:
-            work.validate()
-
-        assert "Invalid UUID" in str(exc_info.value)
+            WorkCredit.from_dict(payload)

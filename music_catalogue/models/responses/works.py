@@ -1,75 +1,23 @@
 from datetime import date, datetime
-from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from music_catalogue.models.artists import Artist
-from music_catalogue.models.exceptions import ValidationError
-from music_catalogue.models.persons import Person
+from music_catalogue.models.responses.artists import Artist
+from music_catalogue.models.responses.persons import Person
+from music_catalogue.models.types import (
+    AudioChannel,
+    AvailabilityStatus,
+    CompletenessLevel,
+    MediumType,
+    ReleaseCategory,
+    ReleaseStage,
+    VersionType,
+)
 from music_catalogue.models.utils import (
     _parse,
     _parse_list,
-    validate_date,
-    validate_start_and_end_years,
-    validate_uuid,
-    validate_year,
 )
-
-
-class VersionType(str, Enum):
-    ORIGINAL = "original"
-    COVER = "cover"
-    REMIX = "remix"
-    LIVE = "live"
-    MASHUP = "mashup"
-    DEMO = "demo"
-    RADIO_EDIT = "radio_edit"
-    OTHER = "other"
-
-
-class CompletenessLevel(str, Enum):
-    SPARSE = "sparse"
-    PARTIAL = "partial"
-    COMPLETE = "complete"
-
-
-class ReleaseCategory(str, Enum):
-    SINGLE = "single"
-    EP = "ep"
-    ALBUM = "album"
-    COMPILATION = "compilation"
-    LIVE = "live"
-    SOUNDTRACK = "soundtrack"
-    DELUXE = "deluxe"
-    OTHER = "other"
-
-
-class ReleaseStage(str, Enum):
-    INITIAL = "initial"
-    REISSUE = "reissue"
-    REMASTER = "remaster"
-    ANNIVERSARY = "anniversary"
-    OTHER = "other"
-
-
-class MediumType(str, Enum):
-    DIGITAL = "digital"
-    PHYSICAL = "physical"
-
-
-class AudioChannel(str, Enum):
-    MONO = "mono"
-    STEREO = "stereo"
-    SURROUND = "surround"
-    DOLBY_ATMOS = "dolby_atmos"
-
-
-class AvailabilityStatus(str, Enum):
-    IN_PRINT = "in_print"
-    LIMITED = "limited"
-    OUT_OF_PRINT = "out_of_print"
-    DIGITAL_ONLY = "digital_only"
 
 
 class Genre(BaseModel):
@@ -83,6 +31,30 @@ class Genre(BaseModel):
             id=data["genre_id"],
             name=data["name"],
             description=data.get("description"),
+        )
+
+
+class WorkCredit(BaseModel):
+    id: str
+    artist: Optional[Artist] = None
+    person: Optional[Person] = None
+    role: Optional[str] = None
+    is_primary: bool = False
+    credit_order: Optional[int] = None
+    instruments: Optional[List[str]] = None
+    notes: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "WorkCredit":
+        return cls(
+            id=data["credit_id"],
+            artist=_parse(Artist, data.get("artist")),
+            person=_parse(Person, data.get("person")),
+            role=data.get("role"),
+            is_primary=data.get("is_primary"),
+            credit_order=data.get("credit_order"),
+            instruments=data.get("instruments"),
+            notes=data.get("notes"),
         )
 
 
@@ -111,7 +83,7 @@ class Work(BaseModel):
     notes: Optional[str] = None
     versions: List["Version"] = Field(default_factory=list)
     genres: List[Genre] = Field(default_factory=list)
-    credits: List["Credit"] = Field(default_factory=list)
+    credits: List["WorkCredit"] = Field(default_factory=list)
     external_links: List[WorkExternalLink] = Field(default_factory=list)
 
     @classmethod
@@ -131,7 +103,7 @@ class Work(BaseModel):
             notes=data.get("notes"),
             versions=_parse_list(Version, data.get("versions")),
             genres=_parse_list(Genre, [item.get("genres", None) for item in data.get("work_genres", [])]),
-            credits=_parse_list(Credit, data.get("credits")),
+            credits=_parse_list(WorkCredit, data.get("credits")),
         )
 
 
@@ -276,104 +248,6 @@ class ReleaseTrack(BaseModel):
             is_hidden=data.get("is_hidden"),
             notes=data.get("notes"),
         )
-
-
-class Credit(BaseModel):
-    id: str
-    work: Optional[Work] = None
-    version: Optional[Version] = None
-    artist: Optional[Artist] = None
-    person: Optional[Person] = None
-    role: Optional[str] = None
-    is_primary: bool = False
-    credit_order: Optional[int] = None
-    instruments: Optional[List[str]] = None
-    notes: Optional[str] = None
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> "Credit":
-        return cls(
-            id=data["credit_id"],
-            work=_parse(Work, data.get("work")),
-            version=_parse(Version, data.get("version")),
-            artist=_parse(Artist, data.get("artist")),
-            person=_parse(Person, data.get("person")),
-            role=data.get("role"),
-            is_primary=data.get("is_primary"),
-            credit_order=data.get("credit_order"),
-            instruments=data.get("instruments"),
-            notes=data.get("notes"),
-        )
-
-
-class WorkCreditCreate(BaseModel):
-    artist_id: Optional[str] = None
-    person_id: Optional[str] = None
-    role: Optional[str] = None
-    is_primary: bool = False
-    credit_order: Optional[int] = None
-    instruments: Optional[List[str]] = None
-    notes: Optional[str] = None
-
-    def validate(self):
-        # Check exactly one of person_id or artist_id
-        if (not self.artist_id and not self.person_id) or (self.artist_id and self.person_id):
-            raise ValidationError("Either person or artist ID is required for credits")
-
-
-class WorkVersionCreate(BaseModel):
-    title: str
-    version_type: VersionType = VersionType.ORIGINAL
-    primary_artist_id: str
-    release_date: Optional[date] = None
-    release_year: Optional[int] = None
-    duration_seconds: Optional[int] = None
-    bpm: Optional[int] = None
-    key_signature: Optional[str] = None
-    lyrics_reference: Optional[str] = None
-    completeness_level: CompletenessLevel = CompletenessLevel.COMPLETE
-    notes: Optional[str] = None
-
-    def validate(self):
-        # Check UUIDs are valid
-        validate_uuid(self.primary_artist_id)
-
-        # Check date and year validity
-        if self.release_date:
-            validate_date(self.release_date)
-        if self.release_year:
-            validate_year(self.release_year)
-
-
-class WorkCreate(BaseModel):
-    title: str
-    language: Optional[str] = None
-    titles: Optional[List[Dict[str, Any]]] = None
-    description: Optional[str] = None
-    identifiers: Optional[List[Dict[str, Any]]] = None
-    origin_year_start: Optional[int] = None
-    origin_year_end: Optional[int] = None
-    origin_country: Optional[str] = None
-    themes: Optional[List[str]] = None
-    sentiment: Optional[str] = None
-    notes: Optional[str] = None
-    genre_ids: Optional[List[str]] = None
-    versions: Optional[List[WorkVersionCreate]] = None
-    credits: Optional[List[WorkCreditCreate]] = None
-    external_links: Optional[List[WorkExternalLink]] = None
-
-    def validate(self):
-        # Check origin year start and end
-        validate_start_and_end_years(self.origin_year_start, self.origin_year_end)
-        # If credits, validate them
-        if self.credits:
-            [credit.validate() for credit in self.credits]
-        # If versions, validate them
-        if self.versions:
-            [version.validate() for version in self.versions]
-        # If genre IDs, validate they are UUIDs
-        if self.genre_ids:
-            [validate_uuid(genre_id) for genre_id in self.genre_ids]
 
 
 Work.model_rebuild()

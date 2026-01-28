@@ -2,7 +2,9 @@ from typing import List, Optional
 
 from music_catalogue.crud.supabase_client import get_supabase
 from music_catalogue.models.exceptions import APIError
-from music_catalogue.models.utils import EntityType, UnifiedSearchResult, _parse_list
+from music_catalogue.models.responses.search import UnifiedSearchResult
+from music_catalogue.models.types import EntityType
+from music_catalogue.models.utils import _parse_list
 from supabase import PostgrestAPIError
 
 

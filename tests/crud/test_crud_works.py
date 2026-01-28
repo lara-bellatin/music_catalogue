@@ -5,8 +5,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from music_catalogue.crud import works
-from music_catalogue.models.exceptions import ValidationError
-from music_catalogue.models.works import Work, WorkCreate, WorkCreditCreate, WorkExternalLink, WorkVersionCreate
+from music_catalogue.models.inputs.work_create import (
+    WorkCreate,
+    WorkCreditCreate,
+    WorkExternalLinkCreate,
+    WorkVersionCreate,
+)
+from music_catalogue.models.responses.works import Work
 
 
 class TestWorksCRUD:
@@ -144,7 +149,6 @@ class TestWorksCRUD:
         """Test successful creation of a simple work."""
         work_data = MagicMock(spec=WorkCreate)
         work_data.title = "Simple Work"
-        work_data.validate = MagicMock(return_value=None)
         work_data.versions = []
         work_data.credits = []
         work_data.genre_ids = []
@@ -176,7 +180,6 @@ class TestWorksCRUD:
             mock_get_supabase.assert_awaited_once()
             mock_supabase.table.assert_called_once_with("works")
             works_table.insert.assert_called_once_with(expected_payload)
-            work_data.validate.assert_called_once()
             mock_parse.assert_called_once_with(Work, {"work_id": "work-uuid"})
             mock_parse_list.assert_not_called()
 
@@ -185,11 +188,10 @@ class TestWorksCRUD:
         """Test successful creation of a complex work with nested relationships."""
         work_data = MagicMock(spec=WorkCreate)
         work_data.title = "Nested Work"
-        work_data.validate = MagicMock(return_value=None)
         work_data.versions = [MagicMock(spec=WorkVersionCreate)]
         work_data.credits = [MagicMock(spec=WorkCreditCreate)]
         work_data.genre_ids = ["genre-1"]
-        work_data.external_links = [MagicMock(spec=WorkExternalLink)]
+        work_data.external_links = [MagicMock(spec=WorkExternalLinkCreate)]
 
         mock_supabase = MagicMock()
 
@@ -270,25 +272,4 @@ class TestWorksCRUD:
 
             assert result is mock_final_work
             mock_get_supabase.assert_awaited_once()
-            work_data.validate.assert_called_once()
             works_table.insert.assert_called_once_with(expected_payload)
-
-    @pytest.mark.asyncio
-    async def test_create_work_validation_error(self):
-        """Test validation errors propagate during work creation."""
-        work_data = MagicMock(spec=WorkCreate)
-        work_data.validate = MagicMock()
-        work_data.validate.side_effect = ValidationError("Test validation error")
-
-        mock_supabase = MagicMock()
-
-        with (
-            patch("music_catalogue.crud.works.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
-        ):
-            mock_get_supabase.return_value = mock_supabase
-
-            with pytest.raises(ValidationError) as exc_info:
-                await works.create(work_data)
-
-            assert "Test validation error" in str(exc_info.value)
-            mock_supabase.table.assert_not_called()

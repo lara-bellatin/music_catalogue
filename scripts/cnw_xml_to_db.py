@@ -8,8 +8,9 @@ from urllib.request import urlopen
 from xml.etree import ElementTree
 
 from music_catalogue.crud import persons, works
-from music_catalogue.models.persons import PersonCreate
-from music_catalogue.models.works import Work, WorkCreate, WorkCreditCreate
+from music_catalogue.models.inputs.person_create import PersonCreate
+from music_catalogue.models.inputs.work_create import WorkCreate, WorkCreditCreate
+from music_catalogue.models.responses.works import Work
 
 MEI_NS = {"mei": "http://www.music-encoding.org/ns/mei"}
 

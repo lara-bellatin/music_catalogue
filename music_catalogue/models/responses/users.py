@@ -1,22 +1,9 @@
 from datetime import date
-from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel
 
-from music_catalogue.models.utils import AnyEntityType, EntityType
-
-
-class UserRole(str, Enum):
-    MEMBER = "member"
-    MODERATOR = "moderator"
-    ADMIN = "admin"
-
-
-class ContributionStatus(str, Enum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+from music_catalogue.models.types import ContributionStatus, EntityType, UserRole
 
 
 class User(BaseModel):
@@ -37,7 +24,7 @@ class TagAssignment(BaseModel):
     id: str
     tag: Tag
     entity_type: EntityType
-    entity: AnyEntityType
+    entity_id: str
     user: User
     confidence: int
     created_at: date
@@ -46,7 +33,7 @@ class TagAssignment(BaseModel):
 class Contribution(BaseModel):
     id: str
     entity_type: EntityType
-    entity: AnyEntityType
+    entity_id: str
     user: User
     change_summary: str
     contribution_status: ContributionStatus

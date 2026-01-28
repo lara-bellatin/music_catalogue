@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from music_catalogue.crud import persons
-from music_catalogue.models.exceptions import ValidationError
-from music_catalogue.models.persons import Person, PersonCreate
+from music_catalogue.models.inputs.person_create import PersonCreate
+from music_catalogue.models.responses.persons import Person
 
 
 class TestPersonsCRUD:
@@ -171,26 +171,6 @@ class TestPersonsCRUD:
             result = await persons.create(person_data)
 
             assert result is mock_person
-            person_data.validate.assert_called_once()
             mock_supabase.table.assert_called_once_with("persons")
             persons_table.insert.assert_called_once_with(expected_payload)
             mock_parse.assert_called_once_with(Person, {"person_id": "person-uuid"})
-
-    @pytest.mark.asyncio
-    async def test_create_person_validation_error(self):
-        """Test validation errors propagate during person creation."""
-        person_data = MagicMock(spec=PersonCreate)
-        person_data.validate.side_effect = ValidationError("Test validation error")
-
-        mock_supabase = MagicMock()
-
-        with (
-            patch("music_catalogue.crud.persons.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
-        ):
-            mock_get_supabase.return_value = mock_supabase
-
-            with pytest.raises(ValidationError) as exc_info:
-                await persons.create(person_data)
-
-            assert "Test validation error" in str(exc_info.value)
-            mock_supabase.table.assert_not_called()

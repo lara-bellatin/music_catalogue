@@ -2,7 +2,8 @@ from typing import Dict, List
 
 from music_catalogue.crud.supabase_client import get_supabase
 from music_catalogue.models.exceptions import APIError
-from music_catalogue.models.utils import EntityType, validate_uuid
+from music_catalogue.models.types import EntityType
+from music_catalogue.models.validation import validate_uuid
 from supabase import PostgrestAPIError
 
 
@@ -43,6 +44,8 @@ async def get_external_links_raw(entity_type: EntityType, entity_id: str) -> Lis
         return res.data
 
     except PostgrestAPIError as e:
+        if e.code == "PGRST116":
+            return None
         raise APIError(str(e)) from None
     except Exception as e:
         raise e

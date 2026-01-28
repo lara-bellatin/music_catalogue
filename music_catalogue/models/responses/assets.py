@@ -1,37 +1,17 @@
 from datetime import date
-from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel
 
-from music_catalogue.models.users import User
-from music_catalogue.models.utils import AnyEntityType, EntityType
-from music_catalogue.models.works import ReleaseMediaItem
-
-
-class AssetType(str, Enum):
-    MEI = "mei"
-    SCORE_IMAGE = "score_image"
-    LEAD_SHEET = "lead_sheet"
-    LYRICS = "lyrics"
-    OTHER = "other"
-
-
-class CollectionItemOwnerType(str, Enum):
-    INSTITUTION = "institution"
-    COLLECTOR = "collector"
-
-
-class ContributionStatus(str, Enum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+from music_catalogue.models.responses.users import User
+from music_catalogue.models.responses.works import ReleaseMediaItem
+from music_catalogue.models.types import AssetType, CollectionItemOwnerType, EntityType
 
 
 class ExternalLink(BaseModel):
     id: str
     entity_type: EntityType
-    entity: AnyEntityType
+    entity_id: str
     label: str
     url: str
     added_by: User
@@ -42,7 +22,7 @@ class ExternalLink(BaseModel):
 class Evidence(BaseModel):
     id: str
     entity_type: EntityType
-    entity: AnyEntityType
+    entity_id: str
     uploaded_by: User
     source_type: str
     source_detail: str
@@ -54,7 +34,7 @@ class Evidence(BaseModel):
 class NotationAsset(BaseModel):
     id: str
     entity_type: EntityType
-    entity: AnyEntityType
+    entity_id: str
     asset_type: AssetType
     file_url: str
     uploaded_by: User

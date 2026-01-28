@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 import pytest
 
 from music_catalogue.crud import artists
-from music_catalogue.models.artists import Artist, ArtistCreate, ArtistMembershipCreate, ArtistType
-from music_catalogue.models.exceptions import ValidationError
+from music_catalogue.models.inputs.artist_create import ArtistCreate, ArtistMembershipCreate, ArtistType
+from music_catalogue.models.responses.artists import Artist
 
 
 class TestArtistsCRUD:
@@ -153,7 +153,6 @@ class TestArtistsCRUD:
         artist_data.display_name = "Solo artist"
         artist_data.person_id = "person-123"
         artist_data.members = []
-        artist_data.validate = MagicMock(return_value=None)
 
         mock_supabase = MagicMock()
         artists_table = MagicMock()
@@ -179,7 +178,6 @@ class TestArtistsCRUD:
             mock_get_supabase.assert_awaited_once()
             mock_supabase.table.assert_called_once_with("artists")
             artists_table.insert.assert_called_once_with(expected_payload)
-            artist_data.validate.assert_called_once()
             mock_parse.assert_called_once_with(Artist, {"artist_id": "artist-uuid"})
             mock_parse_list.assert_not_called()
 
@@ -190,7 +188,6 @@ class TestArtistsCRUD:
         artist_membership_data.person_id = "person-1"
         artist_membership_data.start_year = 1985
         artist_membership_data.end_year = 1988
-        artist_membership_data.validate = MagicMock(return_value=None)
 
         artist_data = MagicMock(spec=ArtistCreate)
         artist_data.artist_type = ArtistType.GROUP
@@ -198,8 +195,6 @@ class TestArtistsCRUD:
         artist_data.start_year = 1980
         artist_data.end_year = 1990
         artist_data.members = [artist_membership_data]
-        artist_data.validate.side_effect = artist_membership_data.validate
-        artist_data.validate.return_value = MagicMock(return_value=None)
 
         mock_supabase = MagicMock()
         artists_table = MagicMock()
@@ -237,27 +232,5 @@ class TestArtistsCRUD:
             mock_supabase.table.assert_has_calls([call("artists"), call("artist_memberships")])
             artists_table.insert.assert_called_once_with(expected_artist_payload)
             memberships_table.insert.assert_called_once_with(expected_members_payload)
-            artist_membership_data.validate.assert_called_once()
-            artist_data.validate.assert_called_once()
             mock_parse.assert_called_once_with(Artist, {"artist_id": "group-123"})
             mock_parse_list.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_create_artist_validation_error(self):
-        """Test validation errors propagate during artist creation."""
-        artist_data = MagicMock(spec=ArtistCreate)
-        artist_data.validate = MagicMock()
-        artist_data.validate.side_effect = ValidationError("Test validation error")
-
-        mock_supabase = MagicMock()
-
-        with (
-            patch("music_catalogue.crud.artists.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
-        ):
-            mock_get_supabase.return_value = mock_supabase
-
-            with pytest.raises(ValidationError) as exc_info:
-                await artists.create(artist_data)
-
-            assert "Test validation error" in str(exc_info.value)
-            mock_supabase.table.assert_not_called()

@@ -3,8 +3,11 @@ from typing import List, Optional
 from music_catalogue.crud import assets
 from music_catalogue.crud.supabase_client import get_supabase
 from music_catalogue.models.exceptions import APIError
-from music_catalogue.models.utils import EntityType, _parse, _parse_list, validate_uuid
-from music_catalogue.models.works import Work, WorkCreate, WorkExternalLink
+from music_catalogue.models.inputs.work_create import WorkCreate
+from music_catalogue.models.responses.works import Work, WorkExternalLink
+from music_catalogue.models.types import EntityType
+from music_catalogue.models.utils import _parse, _parse_list
+from music_catalogue.models.validation import validate_uuid
 from supabase import PostgrestAPIError
 
 
@@ -79,6 +82,8 @@ async def get_by_id(id: str) -> Optional[Work]:
 
         return work
     except PostgrestAPIError as e:
+        if e.code == "PGRST116":
+            return None
         raise APIError(str(e)) from None
     except Exception as e:
         raise e
@@ -145,9 +150,6 @@ async def create(work_data: WorkCreate) -> Work:
         APIError: If Supabase throws an error
     """
     try:
-        # Validate work data is complete
-        work_data.validate()
-
         supabase = await get_supabase()
 
         # Create work

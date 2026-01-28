@@ -7,8 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from music_catalogue.crud import assets
-from music_catalogue.models.exceptions import ValidationError
-from music_catalogue.models.utils import EntityType
+from music_catalogue.models.types import EntityType
 
 
 class TestAssetsCRUD:
@@ -83,13 +82,3 @@ class TestAssetsCRUD:
             result = await assets.get_external_links_raw(entity_type, entity_id)
 
             assert result == []
-
-    @pytest.mark.asyncio
-    async def test_get_external_links_invalid_uuid(self):
-        """Test retrieving external links with an invalid UUID."""
-        entity_type = EntityType.PERSON
-        entity_id = "invalid-uuid"
-
-        with patch("music_catalogue.crud.assets.validate_uuid", side_effect=ValidationError("Invalid UUID")):
-            with pytest.raises(ValidationError):
-                await assets.get_external_links_raw(entity_type, entity_id)
