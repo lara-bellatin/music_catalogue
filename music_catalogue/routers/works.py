@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from music_catalogue.crud import works
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.inputs.work_create import WorkCreate
+from music_catalogue.models.responses.references import WorkRef
 from music_catalogue.models.responses.works import Work
 
 router = APIRouter(prefix="/works", tags=["Works"])
@@ -28,7 +29,7 @@ async def get_work_by_id(id: str):
         raise
 
 
-@router.get("/", response_model=List[Work], response_model_exclude_none=True, status_code=status.HTTP_200_OK)
+@router.get("/", response_model=List[WorkRef], response_model_exclude_none=True, status_code=status.HTTP_200_OK)
 async def search_works(query: str = Query(min_length=2, max_length=50)):
     """
     Searches for works based on a query string.

@@ -4,7 +4,8 @@ from music_catalogue.crud import assets
 from music_catalogue.crud.supabase_client import get_supabase
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.inputs.work_create import WorkCreate
-from music_catalogue.models.responses.works import Work, WorkExternalLink
+from music_catalogue.models.responses.references import WorkRef
+from music_catalogue.models.responses.works import Work
 from music_catalogue.models.types import EntityType
 from music_catalogue.models.utils import _parse, _parse_list
 from music_catalogue.models.validation import validate_uuid
@@ -77,8 +78,7 @@ async def get_by_id(id: str) -> Optional[Work]:
         work: Work = _parse(Work, res.data)
 
         if work:
-            external_links_raw = await assets.get_external_links_raw(EntityType.WORK, entity_id=work.id)
-            work.external_links = _parse_list(WorkExternalLink, external_links_raw)
+            work.external_links = await assets.get_external_links(EntityType.WORK, work.id)
 
         return work
     except PostgrestAPIError as e:
@@ -89,7 +89,7 @@ async def get_by_id(id: str) -> Optional[Work]:
         raise e
 
 
-async def search(query: str) -> List[Work]:
+async def search(query: str) -> List[WorkRef]:
     """
     Search for a work based on a text query
 
@@ -97,7 +97,7 @@ async def search(query: str) -> List[Work]:
         query (str): A query to search for works by
 
     Returns:
-        List[Work]: A list of works matching the query
+        List[WorkRef]: A list of references to works matching the query
 
     Raises:
         APIError: If Supabase throws an error
@@ -108,27 +108,16 @@ async def search(query: str) -> List[Work]:
             supabase.table("works")
             .select(
                 """
-                *,
-                versions(
-                    *,
-                    versions!based_on_version_id(*, artists(*)),
-                    artists(*, persons(*), artist_memberships(*, persons(*))),
-                    release_tracks(*, releases(*)),
-                    credits(
-                        *,
-                        persons(*),
-                        artists(*, persons(*), artist_memberships(persons(*)))
-                    )
-                ),
-                work_genres(genres(*)),
-                credits(*, persons(*), artists(*, artist_memberships(*, persons(*))))
+                id,
+                title,
+                language,
             """
             )
             .text_search("search_text", query.replace(" ", "+"))
             .execute()
         )
 
-        return _parse_list(Work, res.data)
+        return _parse_list(WorkRef, res.data)
     except PostgrestAPIError as e:
         raise APIError(str(e)) from None
     except Exception as e:

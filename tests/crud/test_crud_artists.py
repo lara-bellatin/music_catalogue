@@ -9,6 +9,7 @@ import pytest
 from music_catalogue.crud import artists
 from music_catalogue.models.inputs.artist_create import ArtistCreate, ArtistMembershipCreate, ArtistType
 from music_catalogue.models.responses.artists import Artist
+from music_catalogue.models.responses.references import ArtistRef
 
 
 class TestArtistsCRUD:
@@ -83,7 +84,7 @@ class TestArtistsCRUD:
         query_builder.execute = AsyncMock(return_value=MagicMock(data=mock_results))
         mock_supabase.table.return_value = query_builder
 
-        parsed_artists = [MagicMock(spec=Artist) for _ in mock_results]
+        parsed_artists = [MagicMock(spec=ArtistRef) for _ in mock_results]
 
         with (
             patch("music_catalogue.crud.artists.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
@@ -97,7 +98,7 @@ class TestArtistsCRUD:
             result = await artists.search(query)
 
             assert result is parsed_artists
-            mock_parse_list.assert_called_once_with(Artist, mock_results)
+            mock_parse_list.assert_called_once_with(ArtistRef, mock_results)
             query_builder.text_search.assert_called_once_with("search_text", query.replace(" ", "+"))
 
     @pytest.mark.asyncio
@@ -121,7 +122,7 @@ class TestArtistsCRUD:
             result = await artists.search(query)
 
             assert result == []
-            mock_parse_list.assert_called_once_with(Artist, [])
+            mock_parse_list.assert_called_once_with(ArtistRef, [])
 
     @pytest.mark.asyncio
     async def test_search_artists_query_normalization(self):

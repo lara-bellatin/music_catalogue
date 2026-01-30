@@ -6,6 +6,7 @@ from music_catalogue.crud import persons
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.inputs.person_create import PersonCreate
 from music_catalogue.models.responses.persons import Person
+from music_catalogue.models.responses.references import PersonRef
 
 router = APIRouter(prefix="/persons", tags=["Persons"])
 
@@ -28,7 +29,7 @@ async def get_person_by_id(id: str):
         raise
 
 
-@router.get("/", response_model=List[Person], response_model_exclude_none=True, status_code=status.HTTP_200_OK)
+@router.get("/", response_model=List[PersonRef], response_model_exclude_none=True, status_code=status.HTTP_200_OK)
 async def search_person(query: str = Query(min_length=2, max_length=50)):
     """
     Searches for persons based on a query string.

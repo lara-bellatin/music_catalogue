@@ -296,8 +296,8 @@ class TestWorkCredit:
         assert credit.credit_order == 1
         assert credit.instruments == ["Voice"]
         assert credit.notes == "Lead performance"
-        assert credit.artist is not None and credit.artist.display_name == "Featured Artist"
-        assert credit.person is not None and credit.person.legal_name == "Featured Person"
+        assert credit.artist is not None and credit.artist.name == "Featured Artist"
+        assert credit.person is not None and credit.person.name == "Featured Person"
 
     def test_credit_from_dict_missing_required_field(self):
         payload = {"role": "Vocals"}

@@ -1,22 +1,24 @@
-from typing import Dict, List
+from typing import List
 
 from music_catalogue.crud.supabase_client import get_supabase
 from music_catalogue.models.exceptions import APIError
+from music_catalogue.models.responses.assets import ExternalLink
 from music_catalogue.models.types import EntityType
+from music_catalogue.models.utils import _parse_list
 from music_catalogue.models.validation import validate_uuid
 from supabase import PostgrestAPIError
 
 
-async def get_external_links_raw(entity_type: EntityType, entity_id: str) -> List[Dict[str, any]]:
+async def get_external_links(entity_type: EntityType, entity_id: str) -> List[ExternalLink]:
     """
-    Get all external links for an entity and returns the raw data, without parsing
+    Get all external links for an entity
 
     Args:
         entity_type (EntityType): The type of entity to recover external links for
         entity_id (str): The UUID of the entity to retrieve for
 
     Returns:
-        List[Dict[str, Any]]: The external links found for the entity
+        List[ExternalLink]: The external links found for the entity
 
     Raises:
         ValidationError: If the UUID format is invalid
@@ -41,7 +43,7 @@ async def get_external_links_raw(entity_type: EntityType, entity_id: str) -> Lis
             .execute()
         )
 
-        return res.data
+        return _parse_list(ExternalLink, res.data)
 
     except PostgrestAPIError as e:
         if e.code == "PGRST116":

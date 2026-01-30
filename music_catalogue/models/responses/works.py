@@ -3,8 +3,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from music_catalogue.models.responses.artists import Artist
-from music_catalogue.models.responses.persons import Person
+from music_catalogue.models.responses.assets import ExternalLink
+from music_catalogue.models.responses.references import ArtistRef, PersonRef, VersionRef
 from music_catalogue.models.types import (
     AudioChannel,
     AvailabilityStatus,
@@ -36,8 +36,8 @@ class Genre(BaseModel):
 
 class WorkCredit(BaseModel):
     id: str
-    artist: Optional[Artist] = None
-    person: Optional[Person] = None
+    artist: Optional[ArtistRef] = None
+    person: Optional[PersonRef] = None
     role: Optional[str] = None
     is_primary: bool = False
     credit_order: Optional[int] = None
@@ -48,24 +48,14 @@ class WorkCredit(BaseModel):
     def from_dict(cls, data: Dict) -> "WorkCredit":
         return cls(
             id=data["credit_id"],
-            artist=_parse(Artist, data.get("artist")),
-            person=_parse(Person, data.get("person")),
+            artist=_parse(ArtistRef, data.get("artist")),
+            person=_parse(PersonRef, data.get("person")),
             role=data.get("role"),
             is_primary=data.get("is_primary"),
             credit_order=data.get("credit_order"),
             instruments=data.get("instruments"),
             notes=data.get("notes"),
         )
-
-
-class WorkExternalLink(BaseModel):
-    label: str
-    url: str
-    source_verified: bool = False
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> "WorkExternalLink":
-        return cls(label=data["label"], url=data["url"], source_verified=data["source_verified"])
 
 
 class Work(BaseModel):
@@ -84,7 +74,7 @@ class Work(BaseModel):
     versions: List["Version"] = Field(default_factory=list)
     genres: List[Genre] = Field(default_factory=list)
     credits: List["WorkCredit"] = Field(default_factory=list)
-    external_links: List[WorkExternalLink] = Field(default_factory=list)
+    external_links: List[ExternalLink] = Field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Work":
@@ -112,8 +102,8 @@ class Version(BaseModel):
     title: str
     work: Optional[Work] = None
     version_type: VersionType = VersionType.ORIGINAL
-    based_on_version: Optional["Version"] = None
-    primary_artist: Artist
+    based_on_version: Optional[VersionRef] = None
+    primary_artist: ArtistRef
     release_date: Optional[date] = None
     release_year: Optional[int] = None
     duration_seconds: Optional[int] = None
@@ -131,7 +121,7 @@ class Version(BaseModel):
             title=data["title"],
             version_type=VersionType(data["version_type"]),
             based_on_version=_parse(Version, data.get("based_on_version")),
-            primary_artist=_parse(Artist, data.get("primary_artist")),
+            primary_artist=_parse(ArtistRef, data.get("primary_artist")),
             release_date=datetime.strptime(data.get("release_date"), "%Y-%m-%d").date()
             if data.get("release_date")
             else None,

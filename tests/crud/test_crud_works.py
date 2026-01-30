@@ -5,12 +5,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from music_catalogue.crud import works
+from music_catalogue.models.inputs.assets_create import ExternalLinkCreate
 from music_catalogue.models.inputs.work_create import (
     WorkCreate,
     WorkCreditCreate,
-    WorkExternalLinkCreate,
     WorkVersionCreate,
 )
+from music_catalogue.models.responses.references import WorkRef
 from music_catalogue.models.responses.works import Work
 
 
@@ -36,7 +37,7 @@ class TestWorksCRUD:
             patch("music_catalogue.crud.works.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
             patch("music_catalogue.crud.works._parse", return_value=mock_work) as mock_parse,
             patch("music_catalogue.crud.works.validate_uuid", return_value=None) as mock_validate,
-            patch("music_catalogue.crud.works.assets.get_external_links_raw", return_value=[]),
+            patch("music_catalogue.crud.works.assets.get_external_links", return_value=[]),
         ):
             mock_get_supabase.return_value = mock_supabase
 
@@ -85,7 +86,7 @@ class TestWorksCRUD:
         query_builder.execute = AsyncMock(return_value=MagicMock(data=mock_results))
         mock_supabase.table.return_value = query_builder
 
-        parsed_works = [MagicMock(spec=Work) for _ in mock_results]
+        parsed_works = [MagicMock(spec=WorkRef) for _ in mock_results]
 
         with (
             patch("music_catalogue.crud.works.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
@@ -96,7 +97,7 @@ class TestWorksCRUD:
             result = await works.search(query)
 
             assert result is parsed_works
-            mock_parse_list.assert_called_once_with(Work, mock_results)
+            mock_parse_list.assert_called_once_with(WorkRef, mock_results)
             query_builder.text_search.assert_called_once_with("search_text", query.replace(" ", "+"))
 
     @pytest.mark.asyncio
@@ -120,7 +121,7 @@ class TestWorksCRUD:
             result = await works.search(query)
 
             assert result == []
-            mock_parse_list.assert_called_once_with(Work, [])
+            mock_parse_list.assert_called_once_with(WorkRef, [])
 
     @pytest.mark.asyncio
     async def test_search_works_query_normalization(self):
@@ -191,7 +192,7 @@ class TestWorksCRUD:
         work_data.versions = [MagicMock(spec=WorkVersionCreate)]
         work_data.credits = [MagicMock(spec=WorkCreditCreate)]
         work_data.genre_ids = ["genre-1"]
-        work_data.external_links = [MagicMock(spec=WorkExternalLinkCreate)]
+        work_data.external_links = [MagicMock(spec=ExternalLinkCreate)]
 
         mock_supabase = MagicMock()
 

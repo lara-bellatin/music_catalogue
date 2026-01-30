@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.responses.persons import Person
+from music_catalogue.models.responses.references import PersonRef
 
 
 class TestPersonEndpoints:
@@ -32,7 +33,7 @@ class TestPersonEndpoints:
     def test_search_persons_success(self, test_client):
         """GET /persons with valid query returns mixed entity list."""
         query = "nielsen"
-        mock_results = [Person(id="person-1", legal_name="Carl Nielsen")]
+        mock_results = [PersonRef(id="person-1", name="Carl Nielsen")]
 
         with patch("music_catalogue.routers.persons.persons.search", new_callable=AsyncMock) as mock_search:
             mock_search.return_value = mock_results

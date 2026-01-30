@@ -1,5 +1,3 @@
-from datetime import date
-
 import pytest
 
 from music_catalogue.models.responses.artists import (
@@ -46,7 +44,7 @@ class TestArtist:
         assert len(artist.members) == 1
         membership = artist.members[0]
         assert membership.id == "membership-1"
-        assert membership.person is not None and membership.person.legal_name == "John Smith"
+        assert membership.person is not None and membership.person.name == "John Smith"
         assert membership.role == "Guitar"
 
     def test_solo_artist_from_dict(self):
@@ -65,8 +63,7 @@ class TestArtist:
 
         assert artist.artist_type is ArtistType.SOLO
         assert artist.person.id == "person-3"
-        assert artist.person.legal_name == "John Smith"
-        assert artist.person.birth_date == date(2000, 1, 1)
+        assert artist.person.name == "John Smith"
         assert artist.members is None
 
     def test_missing_required_fields(self):
@@ -87,7 +84,6 @@ class TestArtist:
     def test_artist_membership_from_dict_minimal_payload(self):
         payload = {
             "membership_id": "membership-2",
-            "artist": None,
             "person": {
                 "person_id": "person-5",
                 "legal_name": "John Smith",
@@ -101,8 +97,7 @@ class TestArtist:
         membership = ArtistMembership.from_dict(payload)
 
         assert membership.id == "membership-2"
-        assert membership.artist is None
-        assert membership.person is not None and membership.person.legal_name == "John Smith"
+        assert membership.person is not None and membership.person.name == "John Smith"
         assert membership.start_year == 2015
         assert membership.end_year == 2018
         assert membership.role == "Drums"

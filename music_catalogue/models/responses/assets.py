@@ -1,22 +1,27 @@
 from datetime import date
-from typing import Optional
+from typing import Dict, Optional
 
 from pydantic import BaseModel
 
+from music_catalogue.models.responses.references import ReleaseMediaItemRef
 from music_catalogue.models.responses.users import User
-from music_catalogue.models.responses.works import ReleaseMediaItem
 from music_catalogue.models.types import AssetType, CollectionItemOwnerType, EntityType
 
 
 class ExternalLink(BaseModel):
-    id: str
-    entity_type: EntityType
-    entity_id: str
     label: str
     url: str
-    added_by: User
-    created_at: date
+    added_by: Optional[User] = None
+    created_at: Optional[date] = None
     source_verified: bool = False
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "ExternalLink":
+        return cls(
+            label=data["label"],
+            url=data["url"],
+            source_verified=data["source_verified"],
+        )
 
 
 class Evidence(BaseModel):
@@ -46,7 +51,7 @@ class CollectionItem(BaseModel):
     id: str
     owner_type: CollectionItemOwnerType
     owner_name: str
-    media_item: ReleaseMediaItem
+    media_item: ReleaseMediaItemRef
     location: Optional[str] = None
     condition_grade: Optional[str] = None
     acquisition_date: Optional[date] = None

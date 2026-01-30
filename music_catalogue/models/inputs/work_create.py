@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, model_validator
 
+from music_catalogue.models.inputs.assets_create import ExternalLinkCreate
 from music_catalogue.models.types import CompletenessLevel, VersionType
 from music_catalogue.models.validation import (
     validate_date,
@@ -54,12 +55,6 @@ class WorkVersionCreate(BaseModel):
             validate_year(self.release_year)
 
 
-class WorkExternalLinkCreate(BaseModel):
-    label: str
-    url: str
-    source_verified: bool = False
-
-
 class WorkCreate(BaseModel):
     title: str
     language: Optional[str] = None
@@ -75,7 +70,7 @@ class WorkCreate(BaseModel):
     genre_ids: Optional[List[str]] = None
     versions: Optional[List[WorkVersionCreate]] = None
     credits: Optional[List[WorkCreditCreate]] = None
-    external_links: Optional[List[WorkExternalLinkCreate]] = None
+    external_links: Optional[List[ExternalLinkCreate]] = None
 
     @model_validator(mode="after")
     def validate(self):

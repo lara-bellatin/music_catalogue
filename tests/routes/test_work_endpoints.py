@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, patch
 
 from music_catalogue.models.exceptions import APIError
+from music_catalogue.models.responses.references import WorkRef
 from music_catalogue.models.responses.works import Work
 
 
@@ -31,10 +32,10 @@ class TestWorksEndpoints:
 
     def test_search_works_success(self, test_client):
         """GET /works with valid query returns Work list."""
-        query = "beethoven"
+        query = "nielsen"
         works_list = [
-            Work(id="work-1", title="Saul og David"),
-            Work(id="work-2", title="Maskarade"),
+            WorkRef(id="work-1", title="Saul og David", language="da"),
+            WorkRef(id="work-2", title="Maskarade", language="da"),
         ]
 
         with patch("music_catalogue.routers.works.works.search", new_callable=AsyncMock) as mock_search:

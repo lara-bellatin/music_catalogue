@@ -4,6 +4,7 @@ from music_catalogue.crud.supabase_client import get_supabase
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.inputs.artist_create import ArtistCreate
 from music_catalogue.models.responses.artists import Artist, ArtistMembership
+from music_catalogue.models.responses.references import ArtistRef
 from music_catalogue.models.utils import _parse, _parse_list
 from music_catalogue.models.validation import validate_uuid
 from supabase import PostgrestAPIError
@@ -32,9 +33,43 @@ async def get_by_id(id: str) -> Optional[Artist]:
             supabase.table("artists")
             .select(
                 """
-                *,
-                artist_memberships(*, person:persons(*)),
-                credits(*, works(*), versions(*))
+                artist_id,
+                person:persons(person_id, legal_name),
+                artist_type,
+                display_name,
+                sort_name,
+                alternative_name,
+                start_year,
+                end_year,
+                artist_memberships(
+                    membership_id,
+                    start_year,
+                    end_year,
+                    role,
+                    notes,
+                    person:persons(
+                        person_id,
+                        legal_name
+                    )
+                ),
+                credits(
+                    credit_id,
+                    role,
+                    is_primary,
+                    credit_order,
+                    notes,
+                    work:works(
+                        work_id,
+                        title,
+                        language
+                    ),
+                    versions(
+                        version_id,
+                        title,
+                        version_type,
+                        release_year,
+                    )
+                )
             """
             )
             .eq("artist_id", id)
@@ -51,7 +86,7 @@ async def get_by_id(id: str) -> Optional[Artist]:
         raise e
 
 
-async def search(query: str) -> List[Artist]:
+async def search(query: str) -> List[ArtistRef]:
     """
     Search for an artist based on a text query
 
@@ -59,7 +94,7 @@ async def search(query: str) -> List[Artist]:
         query (str): A query to search for artists by
 
     Returns:
-        List[Artist]: A list of artists matching the query
+        List[ArtistRef]: A list of references to artists matching the query
 
     Raises:
         APIError: If Supabase throws an error
@@ -70,17 +105,16 @@ async def search(query: str) -> List[Artist]:
             supabase.table("artists")
             .select(
                 """
-                *,
-                person:persons(*),
-                artist_memberships(*, person:persons(*)),
-                credits(*, works(*), versions(*))
+                id,
+                display_name,
+                artist_type
             """
             )
             .text_search("search_text", query.replace(" ", "+"))
             .execute()
         )
 
-        return _parse_list(Artist, artist_data.data)
+        return _parse_list(ArtistRef, artist_data.data)
     except PostgrestAPIError as e:
         raise APIError(str(e)) from None
     except Exception as e:

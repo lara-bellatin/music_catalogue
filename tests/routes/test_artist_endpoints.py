@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.responses.artists import Artist
-from music_catalogue.models.responses.persons import Person
+from music_catalogue.models.responses.references import ArtistRef, PersonRef
 from music_catalogue.models.types import ArtistType
 
 
@@ -34,7 +34,7 @@ class TestArtistsEndpoints:
     def test_search_artists_success(self, test_client):
         """GET /artists with valid query returns mixed entity list."""
         query = "nielsen"
-        mock_results = [Artist(id="artist-1", display_name="Carl Nielsen", artist_type=ArtistType.SOLO)]
+        mock_results = [ArtistRef(id="artist-1", name="Carl Nielsen", artist_type=ArtistType.SOLO)]
 
         with patch("music_catalogue.routers.artists.artists.search", new_callable=AsyncMock) as mock_search:
             mock_search.return_value = mock_results
@@ -64,7 +64,7 @@ class TestArtistsEndpoints:
     def test_create_artist_success(self, test_client, sample_uuid):
         """POST /artists returns created artist payload."""
         payload = {"display_name": "New Artist", "artist_type": ArtistType.SOLO, "person_id": sample_uuid}
-        person = Person(id=sample_uuid, legal_name="Artist Person")
+        person = PersonRef(id=sample_uuid, name="Artist Person")
         artist = Artist(id="artist-123", display_name="New Artist", artist_type=ArtistType.SOLO, person=person)
 
         with (

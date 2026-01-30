@@ -6,6 +6,7 @@ from music_catalogue.crud import artists
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.inputs.artist_create import ArtistCreate
 from music_catalogue.models.responses.artists import Artist
+from music_catalogue.models.responses.references import ArtistRef
 
 router = APIRouter(prefix="/artists", tags=["Artists"])
 
@@ -28,7 +29,7 @@ async def get_artist_by_id(id: str):
         raise
 
 
-@router.get("/", response_model=List[Artist], response_model_exclude_none=True, status_code=status.HTTP_200_OK)
+@router.get("/", response_model=List[ArtistRef], response_model_exclude_none=True, status_code=status.HTTP_200_OK)
 async def search_artists(query: str = Query(min_length=2, max_length=50)):
     """
     Searches for artists based on a query string.

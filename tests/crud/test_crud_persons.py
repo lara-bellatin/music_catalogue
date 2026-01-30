@@ -9,6 +9,7 @@ import pytest
 from music_catalogue.crud import persons
 from music_catalogue.models.inputs.person_create import PersonCreate
 from music_catalogue.models.responses.persons import Person
+from music_catalogue.models.responses.references import PersonRef
 
 
 class TestPersonsCRUD:
@@ -22,6 +23,8 @@ class TestPersonsCRUD:
             "person_id": person_id,
             "legal_name": "Carl Nielsen",
         }
+        mock_person = MagicMock(spec=Person)
+        mock_person.id = person_id
 
         mock_supabase = MagicMock()
         query_builder = MagicMock()
@@ -33,14 +36,15 @@ class TestPersonsCRUD:
 
         with (
             patch("music_catalogue.crud.persons.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
-            patch("music_catalogue.crud.persons._parse", return_value=MagicMock(spec=Person)) as mock_parse,
+            patch("music_catalogue.crud.persons._parse", return_value=mock_person) as mock_parse,
             patch("music_catalogue.crud.persons.validate_uuid", return_value=None) as mock_validate_uuid,
+            patch("music_catalogue.crud.persons.assets.get_external_links", return_value=[]),
         ):
             mock_get_supabase.return_value = mock_supabase
 
             result = await persons.get_by_id(person_id)
 
-            assert result is mock_parse.return_value
+            assert result is mock_person
             mock_validate_uuid.assert_called_once_with(person_id)
             mock_supabase.table.assert_called_once_with("persons")
             mock_parse.assert_called_once_with(Person, mock_person_data)
@@ -82,7 +86,7 @@ class TestPersonsCRUD:
         query_builder.execute = AsyncMock(return_value=MagicMock(data=mock_results))
         mock_supabase.table.return_value = query_builder
 
-        parsed_persons = [MagicMock(spec=Person) for _ in mock_results]
+        parsed_persons = [MagicMock(spec=PersonRef) for _ in mock_results]
 
         with (
             patch("music_catalogue.crud.persons.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
@@ -96,7 +100,7 @@ class TestPersonsCRUD:
             result = await persons.search(query)
 
             assert result is parsed_persons
-            mock_parse_list.assert_called_once_with(Person, mock_results)
+            mock_parse_list.assert_called_once_with(PersonRef, mock_results)
             query_builder.text_search.assert_called_once_with("search_text", query.replace(" ", "+"))
 
     @pytest.mark.asyncio
@@ -120,7 +124,7 @@ class TestPersonsCRUD:
             result = await persons.search(query)
 
             assert result == []
-            mock_parse_list.assert_called_once_with(Person, [])
+            mock_parse_list.assert_called_once_with(PersonRef, [])
 
     @pytest.mark.asyncio
     async def test_search_persons_query_normalization(self):

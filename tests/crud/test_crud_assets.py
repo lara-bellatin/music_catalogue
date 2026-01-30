@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from music_catalogue.crud import assets
+from music_catalogue.models.responses.assets import ExternalLink
 from music_catalogue.models.types import EntityType
 
 
@@ -40,6 +41,18 @@ class TestAssetsCRUD:
                 "source_verified": False,
             },
         ]
+        mock_links = [
+            ExternalLink(
+                label="IMSLP",
+                url="https://imslp.org/work",
+                source_verified=True,
+            ),
+            ExternalLink(
+                label="Wikipedia",
+                url="https://en.wikipedia.org/wiki/Work",
+                source_verified=False,
+            ),
+        ]
 
         mock_supabase = MagicMock()
         query_builder = MagicMock()
@@ -51,12 +64,13 @@ class TestAssetsCRUD:
         with (
             patch("music_catalogue.crud.assets.get_supabase", new_callable=AsyncMock) as mock_get_supabase,
             patch("music_catalogue.crud.assets.validate_uuid", return_value=None) as mock_validate_uuid,
+            patch("music_catalogue.crud.assets._parse_list", return_value=mock_links),
         ):
             mock_get_supabase.return_value = mock_supabase
 
-            result = await assets.get_external_links_raw(entity_type, entity_id)
+            result = await assets.get_external_links(entity_type, entity_id)
 
-            assert result is mock_links_data
+            assert result is mock_links
             mock_validate_uuid.assert_called_once_with(entity_id)
             mock_supabase.table.assert_called_once_with("external_links")
 
@@ -79,6 +93,6 @@ class TestAssetsCRUD:
         ):
             mock_get_supabase.return_value = mock_supabase
 
-            result = await assets.get_external_links_raw(entity_type, entity_id)
+            result = await assets.get_external_links(entity_type, entity_id)
 
             assert result == []
