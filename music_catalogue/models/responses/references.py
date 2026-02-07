@@ -50,9 +50,9 @@ class WorkRef(BaseModel):
 class VersionRef(BaseModel):
     id: str
     title: str
-    work: Optional[WorkRef]
+    work: Optional[WorkRef] = None
     version_type: VersionType
-    primary_artist: ArtistRef
+    primary_artist: Optional[ArtistRef] = None
     release_year: Optional[int] = None
 
     @classmethod
@@ -60,9 +60,9 @@ class VersionRef(BaseModel):
         return cls(
             id=data["version_id"],
             title=data["title"],
-            work=_parse(WorkRef, data["work"]),
+            work=_parse(WorkRef, data.get("work", None)) or None,
             version_type=VersionType(data["version_type"]),
-            primary_artist=_parse(ArtistRef, data["artist"]),
+            primary_artist=_parse(ArtistRef, data.get("artist", None)) or None,
             release_year=data.get("release_year"),
         )
 
@@ -98,4 +98,20 @@ class ReleaseMediaItemRef(BaseModel):
             release=_parse(ReleaseRef, data.get("release")),
             medium_type=MediumType(data["medium_type"]),
             format_name=data["format_name"],
+        )
+
+
+class CreditRef(BaseModel):
+    role: str
+    is_primary: bool
+    work: Optional[WorkRef] = None
+    version: Optional[VersionRef] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "CreditRef":
+        return cls(
+            role=data["role"],
+            is_primary=data["is_primary"],
+            work=_parse(WorkRef, data.get("work")),
+            version=_parse(WorkRef, data.get("version")),
         )

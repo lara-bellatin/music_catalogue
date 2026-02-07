@@ -52,7 +52,7 @@ async def get_by_id(id: str) -> Optional[Work]:
                     title,
                     version_type,
                     primary_artist:artists!fk_versions_primary_artist(
-                        artist_id, display_name
+                        artist_id, display_name, artist_type
                     ),
                     release_year,
                     completeness_level

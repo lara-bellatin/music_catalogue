@@ -2,7 +2,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
-from music_catalogue.models.responses.references import PersonRef
+from music_catalogue.models.responses.references import CreditRef, PersonRef, VersionRef
 from music_catalogue.models.types import ArtistType
 from music_catalogue.models.utils import _parse, _parse_list
 
@@ -17,6 +17,8 @@ class Artist(BaseModel):
     start_year: Optional[int] = None
     end_year: Optional[int] = None
     members: Optional[List["ArtistMembership"]] = None
+    credits: Optional[List[CreditRef]] = None
+    versions: Optional[List[VersionRef]] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Artist":
@@ -30,6 +32,8 @@ class Artist(BaseModel):
             start_year=data.get("start_year"),
             end_year=data.get("end_year"),
             members=_parse_list(ArtistMembership, data.get("artist_memberships", None)) or None,
+            credits=_parse_list(CreditRef, data.get("credits", None)) or None,
+            versions=_parse_list(VersionRef, data.get("versions", None)) or None,
         )
 
 

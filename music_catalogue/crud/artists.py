@@ -52,6 +52,12 @@ async def get_by_id(id: str) -> Optional[Artist]:
                         legal_name
                     )
                 ),
+                versions(
+                    version_id,
+                    title,
+                    version_type,
+                    release_year
+                )
                 credits(
                     credit_id,
                     role,
@@ -63,7 +69,7 @@ async def get_by_id(id: str) -> Optional[Artist]:
                         title,
                         language
                     ),
-                    versions(
+                    version:versions(
                         version_id,
                         title,
                         version_type,
