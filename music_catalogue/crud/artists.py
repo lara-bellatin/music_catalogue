@@ -38,7 +38,7 @@ async def get_by_id(id: str) -> Optional[Artist]:
                 artist_type,
                 display_name,
                 sort_name,
-                alternative_name,
+                alternative_names,
                 start_year,
                 end_year,
                 artist_memberships(
@@ -67,7 +67,7 @@ async def get_by_id(id: str) -> Optional[Artist]:
                         version_id,
                         title,
                         version_type,
-                        release_year,
+                        release_year
                     )
                 )
             """
