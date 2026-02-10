@@ -15,7 +15,7 @@ class TestArtistsEndpoints:
         """GET /artists/{id} returns serialized Artist when found."""
         artist = Artist(id="artist-1", display_name="Carl Nielsen", artist_type=ArtistType.SOLO)
 
-        with patch("music_catalogue.routers.artists.artists.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
+        with patch("music_catalogue.routers.artists.Artist.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
             mock_get_by_id.return_value = artist
 
             response = test_client.get("/artists/artist-1")
@@ -26,7 +26,7 @@ class TestArtistsEndpoints:
 
     def test_get_artist_by_id_not_found(self, test_client):
         """Not found results propagate as 404 responses."""
-        with patch("music_catalogue.routers.artists.artists.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
+        with patch("music_catalogue.routers.artists.Artist.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
             mock_get_by_id.return_value = None
             response = test_client.get("/artists/missing")
             assert response.status_code == 404
@@ -36,7 +36,7 @@ class TestArtistsEndpoints:
         query = "nielsen"
         mock_results = [ArtistRef(id="artist-1", name="Carl Nielsen", artist_type=ArtistType.SOLO)]
 
-        with patch("music_catalogue.routers.artists.artists.search", new_callable=AsyncMock) as mock_search:
+        with patch("music_catalogue.routers.artists.Artist.search", new_callable=AsyncMock) as mock_search:
             mock_search.return_value = mock_results
 
             response = test_client.get("/artists", params={"query": query})
@@ -68,7 +68,7 @@ class TestArtistsEndpoints:
         artist = Artist(id="artist-123", display_name="New Artist", artist_type=ArtistType.SOLO, person=person)
 
         with (
-            patch("music_catalogue.routers.artists.artists.create", new_callable=AsyncMock) as mock_create,
+            patch("music_catalogue.routers.artists.Artist.create", new_callable=AsyncMock) as mock_create,
         ):
             mock_create.return_value = artist
 
@@ -80,14 +80,14 @@ class TestArtistsEndpoints:
 
     def test_create_artist_validation_error(self, test_client):
         """Domain validation errors surface as 422 responses."""
-        with patch("music_catalogue.routers.artists.artists.create", new_callable=AsyncMock):
+        with patch("music_catalogue.routers.artists.Artist.create", new_callable=AsyncMock):
             response = test_client.post("/artists", json={"display_name": "Invalid", "artist_type": ArtistType.SOLO})
 
             assert response.status_code == 422
 
     def test_create_artist_api_error(self, test_client, sample_uuid):
         """API errors surface as 500 responses for create."""
-        with patch("music_catalogue.routers.artists.artists.create", new_callable=AsyncMock) as mock_create:
+        with patch("music_catalogue.routers.artists.Artist.create", new_callable=AsyncMock) as mock_create:
             mock_create.side_effect = APIError("Upstream failure")
 
             response = test_client.post(

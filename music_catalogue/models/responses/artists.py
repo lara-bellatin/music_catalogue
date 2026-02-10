@@ -1,13 +1,40 @@
-from typing import Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional
 
-from pydantic import BaseModel
-
+from music_catalogue.crud.supabase_client import get_supabase
+from music_catalogue.models.base import CatalogueModel
+from music_catalogue.models.exceptions import APIError
+from music_catalogue.models.inputs.artist_create import ArtistCreate
 from music_catalogue.models.responses.references import CreditRef, PersonRef, VersionRef
-from music_catalogue.models.types import ArtistType
+from music_catalogue.models.types import ArtistType, EntityType
 from music_catalogue.models.utils import _parse, _parse_list
+from supabase import PostgrestAPIError
 
 
-class Artist(BaseModel):
+class Artist(CatalogueModel):
+    table_name: ClassVar[str] = "artists"
+    pk_column: ClassVar[str] = "artist_id"
+    entity_type: ClassVar[EntityType] = EntityType.ARTIST
+    query: ClassVar[str] = f"""
+        artist_id,
+        person:persons({PersonRef.query}),
+        artist_type,
+        display_name,
+        sort_name,
+        alternative_names,
+        start_year,
+        end_year,
+        artist_memberships(
+            membership_id,
+            start_year,
+            end_year,
+            role,
+            notes,
+            person:persons({PersonRef.query})
+        ),
+        versions({VersionRef.query}),
+        credits({CreditRef.artist_person_query})
+    """
+
     id: str
     person: Optional[PersonRef] = None
     artist_type: ArtistType
@@ -36,8 +63,37 @@ class Artist(BaseModel):
             versions=_parse_list(VersionRef, data.get("versions", None)) or None,
         )
 
+    @classmethod
+    async def create(cls, data: "ArtistCreate", exclude: set = None) -> "Artist":
+        exclude = (exclude or set()) | {"members"}
+        artist = None
+        supabase = await get_supabase()
 
-class ArtistMembership(BaseModel):
+        try:
+            artist = await super().create(data, exclude=exclude)
+
+            if data.members:
+                await (
+                    supabase.table("artist_memberships")
+                    .insert(
+                        [{"group_id": artist.id, **member.model_dump(exclude_none=True)} for member in data.members]
+                    )
+                    .execute()
+                )
+                # Re-fetch to include memberships
+                return await cls.get_by_id(artist.id)
+
+            return artist
+
+        except PostgrestAPIError as e:
+            # Rollback on failure
+            if artist and artist.id:
+                await supabase.table("artist_memberships").delete().eq("group_id", artist.id).execute()
+                await supabase.table("artists").delete().eq("artist_id", artist.id).execute()
+            raise APIError(str(e)) from None
+
+
+class ArtistMembership(CatalogueModel):
     id: str
     person: Optional[PersonRef] = None
     start_year: Optional[int] = None

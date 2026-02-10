@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Optional
+from typing import ClassVar, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -8,6 +8,8 @@ from music_catalogue.models.utils import _parse
 
 
 class ArtistRef(BaseModel):
+    query: ClassVar[str] = "artist_id, display_name, artist_type"
+
     id: str
     name: str
     artist_type: ArtistType
@@ -22,6 +24,8 @@ class ArtistRef(BaseModel):
 
 
 class PersonRef(BaseModel):
+    query: ClassVar[str] = "person_id, legal_name"
+
     id: str
     name: str
 
@@ -34,6 +38,8 @@ class PersonRef(BaseModel):
 
 
 class WorkRef(BaseModel):
+    query: ClassVar[str] = "work_id, title,language"
+
     id: str
     title: str
     language: str
@@ -48,6 +54,15 @@ class WorkRef(BaseModel):
 
 
 class VersionRef(BaseModel):
+    query: ClassVar[str] = f"""
+        version_id,
+        title,
+        version_type,
+        primary_artist:artists!fk_versions_primary_artist({ArtistRef.query}),
+        release_year,
+        completeness_level
+    """
+
     id: str
     title: str
     work: Optional[WorkRef] = None
@@ -102,8 +117,32 @@ class ReleaseMediaItemRef(BaseModel):
 
 
 class CreditRef(BaseModel):
+    work_version_query: ClassVar[str] = f"""
+        credit_id,
+        role,
+        is_primary,
+        credit_order,
+        notes,
+        artist:artists({ArtistRef.query}),
+        person:persons({PersonRef.query})
+    """
+    artist_person_query: ClassVar[str] = f"""
+        credit_id,
+        role,
+        is_primary,
+        credit_order,
+        notes,
+        work:works({WorkRef.query}),
+        version:versions({VersionRef.query})
+    """
+
     role: str
-    is_primary: bool
+    is_primary: bool = False
+    credit_order: Optional[int] = None
+    instruments: Optional[List[str]] = None
+    notes: Optional[str] = None
+    artist: Optional[ArtistRef] = None
+    person: Optional[PersonRef] = None
     work: Optional[WorkRef] = None
     version: Optional[VersionRef] = None
 
@@ -112,6 +151,11 @@ class CreditRef(BaseModel):
         return cls(
             role=data["role"],
             is_primary=data["is_primary"],
+            credit_order=data.get("credit_order"),
+            instruments=data.get("instruments"),
+            notes=data.get("notes"),
+            artist=_parse(ArtistRef, data.get("artist")),
+            person=_parse(PersonRef, data.get("person")),
             work=_parse(WorkRef, data.get("work")),
-            version=_parse(WorkRef, data.get("version")),
+            version=_parse(VersionRef, data.get("version")),
         )

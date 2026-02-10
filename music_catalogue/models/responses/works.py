@@ -1,23 +1,16 @@
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from music_catalogue.crud.supabase_client import get_supabase
+from music_catalogue.models.base import CatalogueModel
+from music_catalogue.models.exceptions import APIError
+from music_catalogue.models.inputs.work_create import WorkCreate
 from music_catalogue.models.responses.assets import ExternalLink
-from music_catalogue.models.responses.references import ArtistRef, PersonRef, VersionRef
-from music_catalogue.models.types import (
-    AudioChannel,
-    AvailabilityStatus,
-    CompletenessLevel,
-    MediumType,
-    ReleaseCategory,
-    ReleaseStage,
-    VersionType,
-)
-from music_catalogue.models.utils import (
-    _parse,
-    _parse_list,
-)
+from music_catalogue.models.responses.references import CreditRef, VersionRef
+from music_catalogue.models.types import EntityType
+from music_catalogue.models.utils import _parse_list
+from supabase import PostgrestAPIError
 
 
 class Genre(BaseModel):
@@ -34,31 +27,28 @@ class Genre(BaseModel):
         )
 
 
-class WorkCredit(BaseModel):
-    id: str
-    artist: Optional[ArtistRef] = None
-    person: Optional[PersonRef] = None
-    role: Optional[str] = None
-    is_primary: bool = False
-    credit_order: Optional[int] = None
-    instruments: Optional[List[str]] = None
-    notes: Optional[str] = None
+class Work(CatalogueModel):
+    table_name: ClassVar[str] = "works"
+    pk_column: ClassVar[str] = "work_id"
+    entity_type: ClassVar[EntityType] = EntityType.WORK
+    query: ClassVar[str] = f"""
+        work_id,
+        title,
+        language,
+        titles,
+        description,
+        identifiers,
+        origin_year_start,
+        origin_year_end,
+        origin_country,
+        themes,
+        sentiment,
+        notes,
+        versions({VersionRef.query}),
+        work_genres(genres(genre_id, name)),
+        credits({CreditRef.work_version_query})
+    """
 
-    @classmethod
-    def from_dict(cls, data: Dict) -> "WorkCredit":
-        return cls(
-            id=data["credit_id"],
-            artist=_parse(ArtistRef, data.get("artist")),
-            person=_parse(PersonRef, data.get("person")),
-            role=data.get("role"),
-            is_primary=data.get("is_primary"),
-            credit_order=data.get("credit_order"),
-            instruments=data.get("instruments"),
-            notes=data.get("notes"),
-        )
-
-
-class Work(BaseModel):
     id: str
     title: str
     language: Optional[str] = None
@@ -71,9 +61,9 @@ class Work(BaseModel):
     themes: Optional[List[str]] = None
     sentiment: Optional[str] = None
     notes: Optional[str] = None
-    versions: List["Version"] = Field(default_factory=list)
+    versions: List[VersionRef] = Field(default_factory=list)
     genres: List[Genre] = Field(default_factory=list)
-    credits: List["WorkCredit"] = Field(default_factory=list)
+    credits: List[CreditRef] = Field(default_factory=list)
     external_links: List[ExternalLink] = Field(default_factory=list)
 
     @classmethod
@@ -91,157 +81,82 @@ class Work(BaseModel):
             themes=data.get("themes"),
             sentiment=data.get("sentiment"),
             notes=data.get("notes"),
-            versions=_parse_list(Version, data.get("versions")),
+            versions=_parse_list(VersionRef, data.get("versions")),
             genres=_parse_list(Genre, [item.get("genres", None) for item in data.get("work_genres", [])]),
-            credits=_parse_list(WorkCredit, data.get("credits")),
+            credits=_parse_list(CreditRef, data.get("credits")),
         )
-
-
-class Version(BaseModel):
-    id: str
-    title: str
-    work: Optional[Work] = None
-    version_type: VersionType = VersionType.ORIGINAL
-    based_on_version: Optional[VersionRef] = None
-    primary_artist: ArtistRef
-    release_date: Optional[date] = None
-    release_year: Optional[int] = None
-    duration_seconds: Optional[int] = None
-    bpm: Optional[int] = None
-    key_signature: Optional[str] = None
-    lyrics_reference: Optional[str] = None
-    completeness_level: CompletenessLevel = CompletenessLevel.COMPLETE
-    notes: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "Version":
-        return cls(
-            id=data["version_id"],
-            work=_parse(Work, data.get("work")),
-            title=data["title"],
-            version_type=VersionType(data["version_type"]),
-            based_on_version=_parse(Version, data.get("based_on_version")),
-            primary_artist=_parse(ArtistRef, data.get("primary_artist")),
-            release_date=datetime.strptime(data.get("release_date"), "%Y-%m-%d").date()
-            if data.get("release_date")
-            else None,
-            release_year=data.get("release_year"),
-            duration_seconds=data.get("duration_seconds"),
-            bpm=data.get("bpm"),
-            key_signature=data.get("key_signature"),
-            lyrics_reference=data.get("lyrics_reference"),
-            completeness_level=CompletenessLevel(data.get("completeness_level")),
-            notes=data.get("notes"),
-        )
+    async def create(cls, data: "WorkCreate", exclude: set = None) -> "Work":
+        exclude = (exclude or set()) | {"genre_ids", "versions", "credits", "external_links"}
+        work = None
+        supabase = await get_supabase()
 
+        try:
+            work = await super().create(data, exclude=exclude)
 
-class Release(BaseModel):
-    id: str
-    title: str
-    release_date: Optional[date] = None
-    release_category: ReleaseCategory = ReleaseCategory.SINGLE
-    catalog_number: Optional[str] = None
-    publisher_number: Optional[str] = None
-    label: Optional[str] = None
-    region: Optional[str] = None
-    release_stage: ReleaseStage = ReleaseStage.INITIAL
-    cover_art_url: Optional[str] = None
-    total_discs: int = 1
-    total_tracks: int
-    notes: Optional[str] = None
-    media_items: List["ReleaseMediaItem"] = Field(default_factory=list)
+            # Create versions
+            if data.versions:
+                await (
+                    supabase.table("versions")
+                    .insert(
+                        [{"work_id": work.id, **version.model_dump(exclude_none=True)} for version in data.versions]
+                    )
+                    .execute()
+                )
 
-    @classmethod
-    def from_dict(cls, data: Dict) -> "Release":
-        return cls(
-            id=data["release_id"],
-            title=data["title"],
-            release_date=datetime.strptime(data.get("release_date"), "%Y-%m-%d").date()
-            if data.get("release_date")
-            else None,
-            release_category=ReleaseCategory(data.get("release_category")),
-            catalog_number=data.get("catalog_number"),
-            publisher_number=data.get("publisher_number"),
-            label=data.get("label"),
-            region=data.get("region"),
-            release_stage=ReleaseStage(data.get("release_stage")),
-            cover_art_url=data.get("cover_art_url"),
-            total_discs=data.get("total_discs"),
-            total_tracks=data.get("total_tracks"),
-            notes=data.get("notes"),
-            media_items=_parse_list(ReleaseMediaItem, data.get("release_media_items")),
-        )
+            # Create credits
+            if data.credits:
+                await (
+                    supabase.table("credits")
+                    .insert([{"work_id": work.id, **credit.model_dump(exclude_none=True)} for credit in data.credits])
+                    .execute()
+                )
 
+            # Assign genres
+            if data.genre_ids:
+                await (
+                    supabase.table("work_genres")
+                    .insert([{"work_id": work.id, "genre_id": genre_id} for genre_id in data.genre_ids])
+                    .execute()
+                )
 
-class ReleaseMediaItem(BaseModel):
-    id: str
-    medium_type: MediumType
-    format_name: str
-    release: Optional[Release] = None
-    platform_or_vendor: Optional[str] = None
-    bitrate_kbps: Optional[int] = None
-    sample_rate_hz: Optional[int] = None
-    bit_depth: Optional[int] = None
-    rpm: Optional[float] = None
-    channels: Optional[AudioChannel] = None
-    packaging: Optional[str] = None
-    accessories: Optional[str] = None
-    pressing_details: Optional[Any] = None
-    sku: Optional[str] = None
-    barcode: Optional[str] = None
-    catalog_variation: Optional[str] = None
-    availability_status: AvailabilityStatus = AvailabilityStatus.IN_PRINT
-    notes: Optional[str] = None
+            # Create external links
+            if data.external_links:
+                await (
+                    supabase.table("external_links")
+                    .insert(
+                        [
+                            {
+                                "entity_type": EntityType.WORK.value,
+                                "entity_id": work.id,
+                                **link.model_dump(exclude_none=True),
+                                # TODO: Remove hardcoded value once user implementation is done
+                                "added_by": "760c6a23-cf19-4e59-89aa-f6921943bc26",
+                            }
+                            for link in data.external_links
+                        ]
+                    )
+                    .execute()
+                )
 
-    @classmethod
-    def from_dict(cls, data: Dict) -> "ReleaseMediaItem":
-        return cls(
-            id=data["media_item_id"],
-            release=_parse(Release, data.get("release")),
-            medium_type=MediumType(data["medium_type"]),
-            format_name=data["format_name"],
-            platform_or_vendor=data.get("platform_or_vendor"),
-            bitrate_kbps=data.get("bitrate_kbps"),
-            sample_rate_hz=data.get("sample_rate_hz"),
-            bit_depth=data.get("bit_depth"),
-            rpm=data.get("rpm"),
-            channels=AudioChannel(data.get("channels")),
-            packaging=data.get("packaging"),
-            accessories=data.get("accessories"),
-            pressing_details=data.get("pressing_details"),
-            sku=data.get("sku"),
-            barcode=data.get("barcode"),
-            catalog_variation=data.get("catalog_variation"),
-            availability_status=AvailabilityStatus(data.get("availability_status")),
-        )
+            # Get work by ID to include complete information
+            return await cls.get_by_id(work.id)
 
-
-class ReleaseTrack(BaseModel):
-    id: str
-    version: Version
-    track_number: int
-    disc_number: int = 1
-    side: Optional[str] = None
-    release: Optional[Release] = None
-    is_hidden: bool = False
-    notes: Optional[str] = None
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> "ReleaseTrack":
-        return cls(
-            id=data["release_track_id"],
-            release=_parse(Release, data.get("release")),
-            version=_parse(Version, data.get("version")),
-            track_number=data["track_number"],
-            disc_number=data.get("disc_number"),
-            side=data.get("side"),
-            is_hidden=data.get("is_hidden"),
-            notes=data.get("notes"),
-        )
-
-
-Work.model_rebuild()
-Version.model_rebuild()
-Release.model_rebuild()
-ReleaseMediaItem.model_rebuild()
-ReleaseTrack.model_rebuild()
+        except PostgrestAPIError as e:
+            # Roll back work creation and its relationships if any relationship creation fails
+            if work and work.id:
+                await supabase.table("versions").delete().eq("work_id", work.id).execute()
+                await supabase.table("credits").delete().eq("work_id", work.id).execute()
+                await supabase.table("work_genres").delete().eq("work_id", work.id).execute()
+                await (
+                    supabase.table("external_links")
+                    .delete()
+                    .eq("entity_type", EntityType.WORK)
+                    .eq("entity_id", work.id)
+                    .execute()
+                )
+                await supabase.table("works").delete().eq("work_id", work.id).execute()
+            raise APIError(str(e)) from None
+        except Exception as e:
+            raise e

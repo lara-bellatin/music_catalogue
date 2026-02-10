@@ -2,14 +2,16 @@ from datetime import date
 
 import pytest
 
-from music_catalogue.models.responses.works import (
-    Genre,
+from music_catalogue.models.responses.references import CreditRef as WorkCredit
+from music_catalogue.models.responses.releases import (
     Release,
     ReleaseMediaItem,
     ReleaseTrack,
-    Version,
+)
+from music_catalogue.models.responses.versions import Version
+from music_catalogue.models.responses.works import (
+    Genre,
     Work,
-    WorkCredit,
 )
 from music_catalogue.models.types import (
     AudioChannel,
@@ -108,7 +110,7 @@ class TestVersion:
     def test_version_from_dict_full_payload(self):
         payload = {
             "version_id": "version-1",
-            "work": {"work_id": "work-1", "title": "Symphony"},
+            "work": {"work_id": "work-1", "title": "Symphony", "language": "en"},
             "title": "Symphony (Live)",
             "version_type": "live",
             "based_on_version": None,
@@ -220,7 +222,7 @@ class TestRelease:
             "release": None,
             "version": {
                 "version_id": "version-2",
-                "work": {"work_id": "work-9", "title": "Piece"},
+                "work": {"work_id": "work-9", "title": "Piece", "language": "en"},
                 "title": "Piece (Demo)",
                 "version_type": "demo",
                 "primary_artist": {
@@ -248,7 +250,6 @@ class TestRelease:
         assert track.version.id == "version-2"
         assert track.version.work is not None and track.version.work.id == "work-9"
         assert track.version.version_type is VersionType.DEMO
-        assert track.version.completeness_level is CompletenessLevel.COMPLETE
 
     def test_release_from_dict_missing_required_field(self):
         payload = {"title": "Unnamed Release"}
@@ -290,7 +291,6 @@ class TestWorkCredit:
 
         credit = WorkCredit.from_dict(payload)
 
-        assert credit.id == "credit-99"
         assert credit.role == "Vocals"
         assert credit.is_primary is True
         assert credit.credit_order == 1

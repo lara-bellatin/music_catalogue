@@ -1,35 +1,13 @@
 from datetime import date
-from typing import Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from music_catalogue.models.base import CatalogueModel
 from music_catalogue.models.responses.assets import ExternalLink
-from music_catalogue.models.responses.references import ArtistRef, VersionRef, WorkRef
+from music_catalogue.models.responses.references import ArtistRef, CreditRef
+from music_catalogue.models.types import EntityType
 from music_catalogue.models.utils import _parse, _parse_list
-
-
-class PersonCredit(BaseModel):
-    id: str
-    work: Optional[WorkRef] = None
-    version: Optional[VersionRef] = None
-    role: Optional[str] = None
-    is_primary: bool = False
-    credit_order: Optional[int] = None
-    instruments: Optional[List[str]] = None
-    notes: Optional[str] = None
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> "PersonCredit":
-        return cls(
-            id=data["credit_id"],
-            work=_parse(WorkRef, data.get("work")),
-            version=_parse(VersionRef, data.get("version")),
-            role=data.get("role"),
-            is_primary=data.get("is_primary"),
-            credit_order=data.get("credit_order"),
-            instruments=data.get("instruments"),
-            notes=data.get("notes"),
-        )
 
 
 class PersonArtistMembership(BaseModel):
@@ -52,14 +30,36 @@ class PersonArtistMembership(BaseModel):
         )
 
 
-class Person(BaseModel):
+class Person(CatalogueModel):
+    table_name: ClassVar[str] = "persons"
+    pk_column: ClassVar[str] = "person_id"
+    entity_type: ClassVar[EntityType] = EntityType.PERSON
+    query: ClassVar[str] = f"""
+        person_id,
+        legal_name,
+        birth_date,
+        death_date,
+        pronouns,
+        notes,
+        artist:artists({ArtistRef.query}),
+        artist_memberships(
+            membership_id,
+            start_year,
+            end_year,
+            role,
+            notes,
+            artist:artists({ArtistRef.query})
+        ),
+        credits({CreditRef.artist_person_query})
+    """
+
     id: str
     legal_name: str
     birth_date: Optional[date] = None
     death_date: Optional[date] = None
     pronouns: Optional[str] = None
     notes: Optional[str] = None
-    credits: List[PersonCredit] = Field(default_factory=list)
+    credits: List[CreditRef] = Field(default_factory=list)
     memberships: Optional[List[PersonArtistMembership]] = None
     external_links: Optional[List[ExternalLink]] = None
 
@@ -72,6 +72,6 @@ class Person(BaseModel):
             death_date=date.fromisoformat(data.get("death_date")) if data.get("death_date") else None,
             pronouns=data.get("pronouns"),
             notes=data.get("notes"),
-            credits=_parse_list(PersonCredit, data.get("credits")),
+            credits=_parse_list(CreditRef, data.get("credits")),
             memberships=_parse_list(PersonArtistMembership, data.get("artist_memberships")) or None,
         )

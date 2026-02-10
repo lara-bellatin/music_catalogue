@@ -1,14 +1,17 @@
 from datetime import date
 from typing import Dict, Optional
 
-from pydantic import BaseModel
-
+from music_catalogue.models.base import CatalogueModel
 from music_catalogue.models.responses.references import ReleaseMediaItemRef
 from music_catalogue.models.responses.users import User
-from music_catalogue.models.types import AssetType, CollectionItemOwnerType, EntityType
+from music_catalogue.models.types import AssetType, CollectionItemOwnerType
+from music_catalogue.models.utils import _parse
 
 
-class ExternalLink(BaseModel):
+class ExternalLink(CatalogueModel):
+    table_name = "external_links"
+    pk_column = "link_id"
+
     label: str
     url: str
     added_by: Optional[User] = None
@@ -16,18 +19,18 @@ class ExternalLink(BaseModel):
     source_verified: bool = False
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "ExternalLink":
+    def from_dict(cls, data: Dict):
         return cls(
             label=data["label"],
             url=data["url"],
+            added_by=_parse(User, data.get("added_by", None)),
+            created_at=date.fromisoformat(data["created_at"]) if data.get("created_at", None) else None,
             source_verified=data["source_verified"],
         )
 
 
-class Evidence(BaseModel):
+class Evidence(CatalogueModel):
     id: str
-    entity_type: EntityType
-    entity_id: str
     uploaded_by: User
     source_type: str
     source_detail: str
@@ -36,10 +39,8 @@ class Evidence(BaseModel):
     verified: bool = False
 
 
-class NotationAsset(BaseModel):
+class NotationAsset(CatalogueModel):
     id: str
-    entity_type: EntityType
-    entity_id: str
     asset_type: AssetType
     file_url: str
     uploaded_by: User
@@ -47,7 +48,7 @@ class NotationAsset(BaseModel):
     mime_type: Optional[str] = None
 
 
-class CollectionItem(BaseModel):
+class CollectionItem(CatalogueModel):
     id: str
     owner_type: CollectionItemOwnerType
     owner_name: str

@@ -14,7 +14,7 @@ class TestWorksEndpoints:
         """GET /works/{id} returns serialized Work when found."""
         work = Work(id="work-1", title="Saul og David")
 
-        with patch("music_catalogue.routers.works.works.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
+        with patch("music_catalogue.routers.works.Work.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
             mock_get_by_id.return_value = work
 
             response = test_client.get("/works/work-1")
@@ -25,7 +25,7 @@ class TestWorksEndpoints:
 
     def test_get_work_by_id_not_found(self, test_client):
         """Not found results propagate as 404 responses."""
-        with patch("music_catalogue.routers.works.works.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
+        with patch("music_catalogue.routers.works.Work.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
             mock_get_by_id.return_value = None
             response = test_client.get("/works/missing")
             assert response.status_code == 404
@@ -38,7 +38,7 @@ class TestWorksEndpoints:
             WorkRef(id="work-2", title="Maskarade", language="da"),
         ]
 
-        with patch("music_catalogue.routers.works.works.search", new_callable=AsyncMock) as mock_search:
+        with patch("music_catalogue.routers.works.Work.search", new_callable=AsyncMock) as mock_search:
             mock_search.return_value = works_list
 
             response = test_client.get("/works", params={"query": query})
@@ -70,7 +70,7 @@ class TestWorksEndpoints:
         }
         work = Work(id="work-123", title="New Work")
 
-        with patch("music_catalogue.routers.works.works.create", new_callable=AsyncMock) as mock_create:
+        with patch("music_catalogue.routers.works.Work.create", new_callable=AsyncMock) as mock_create:
             mock_create.return_value = work
 
             response = test_client.post("/works", json=payload)
@@ -81,14 +81,14 @@ class TestWorksEndpoints:
 
     def test_create_work_validation_error(self, test_client):
         """Domain validation errors surface as 422 responses."""
-        with patch("music_catalogue.routers.works.works.create", new_callable=AsyncMock):
+        with patch("music_catalogue.routers.works.Work.create", new_callable=AsyncMock):
             response = test_client.post("/works", json={})
 
             assert response.status_code == 422
 
     def test_create_work_api_error(self, test_client):
         """API errors surface as 500 responses for create."""
-        with patch("music_catalogue.routers.works.works.create", new_callable=AsyncMock) as mock_create:
+        with patch("music_catalogue.routers.works.Work.create", new_callable=AsyncMock) as mock_create:
             mock_create.side_effect = APIError("Upstream failure")
 
             response = test_client.post("/works", json={"title": "New Work"})

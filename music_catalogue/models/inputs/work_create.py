@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, model_validator
 
 from music_catalogue.models.inputs.assets_create import ExternalLinkCreate
+from music_catalogue.models.inputs.credit_create import CreditCreate
 from music_catalogue.models.types import CompletenessLevel, VersionType
 from music_catalogue.models.validation import (
     validate_date,
@@ -14,22 +15,6 @@ from music_catalogue.models.validation import (
 
 
 # CREATE
-class WorkCreditCreate(BaseModel):
-    artist_id: Optional[str] = None
-    person_id: Optional[str] = None
-    role: Optional[str] = None
-    is_primary: bool = False
-    credit_order: Optional[int] = None
-    instruments: Optional[List[str]] = None
-    notes: Optional[str] = None
-
-    @model_validator(mode="after")
-    def validate(self):
-        # Check exactly one of person_id or artist_id
-        if (not self.artist_id and not self.person_id) or (self.artist_id and self.person_id):
-            raise ValueError("Either person or artist ID is required for credits")
-
-
 class WorkVersionCreate(BaseModel):
     title: str
     version_type: VersionType = VersionType.ORIGINAL
@@ -69,7 +54,7 @@ class WorkCreate(BaseModel):
     notes: Optional[str] = None
     genre_ids: Optional[List[str]] = None
     versions: Optional[List[WorkVersionCreate]] = None
-    credits: Optional[List[WorkCreditCreate]] = None
+    credits: Optional[List[CreditCreate]] = None
     external_links: Optional[List[ExternalLinkCreate]] = None
 
     @model_validator(mode="after")

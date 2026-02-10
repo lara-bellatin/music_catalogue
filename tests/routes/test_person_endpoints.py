@@ -14,7 +14,7 @@ class TestPersonEndpoints:
         """GET /persons/{id} returns serialized Person when found."""
         person = Person(id=sample_uuid, legal_name="Carl Nielsen")
 
-        with patch("music_catalogue.routers.persons.persons.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
+        with patch("music_catalogue.routers.persons.Person.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
             mock_get_by_id.return_value = person
 
             response = test_client.get(f"/persons/{sample_uuid}")
@@ -25,7 +25,7 @@ class TestPersonEndpoints:
 
     def test_get_person_by_id_not_found(self, test_client):
         """Not found results propagate as 404 responses."""
-        with patch("music_catalogue.routers.persons.persons.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
+        with patch("music_catalogue.routers.persons.Person.get_by_id", new_callable=AsyncMock) as mock_get_by_id:
             mock_get_by_id.return_value = None
             response = test_client.get("/persons/missing")
             assert response.status_code == 404
@@ -35,7 +35,7 @@ class TestPersonEndpoints:
         query = "nielsen"
         mock_results = [PersonRef(id="person-1", name="Carl Nielsen")]
 
-        with patch("music_catalogue.routers.persons.persons.search", new_callable=AsyncMock) as mock_search:
+        with patch("music_catalogue.routers.persons.Person.search", new_callable=AsyncMock) as mock_search:
             mock_search.return_value = mock_results
 
             response = test_client.get("/persons", params={"query": query})
@@ -68,7 +68,7 @@ class TestPersonEndpoints:
         }
         person = Person(id="person-123", legal_name="New Composer")
 
-        with patch("music_catalogue.routers.persons.persons.create", new_callable=AsyncMock) as mock_create:
+        with patch("music_catalogue.routers.persons.Person.create", new_callable=AsyncMock) as mock_create:
             mock_create.return_value = person
 
             response = test_client.post("/persons", json=payload)
@@ -79,14 +79,14 @@ class TestPersonEndpoints:
 
     def test_create_person_validation_error(self, test_client):
         """Domain validation errors surface as 422 responses."""
-        with patch("music_catalogue.routers.persons.persons.create", new_callable=AsyncMock):
+        with patch("music_catalogue.routers.persons.Person.create", new_callable=AsyncMock):
             response = test_client.post("/persons", json={})
 
             assert response.status_code == 422
 
     def test_create_person_api_error(self, test_client):
         """API errors surface as 500 responses for create."""
-        with patch("music_catalogue.routers.persons.persons.create", new_callable=AsyncMock) as mock_create:
+        with patch("music_catalogue.routers.persons.Person.create", new_callable=AsyncMock) as mock_create:
             mock_create.side_effect = APIError("Upstream failure")
 
             response = test_client.post("/persons", json={"legal_name": "Composer"})
@@ -105,7 +105,7 @@ class TestPersonEndpoints:
             Person(id="person-2", legal_name="Member Two"),
         ]
 
-        with patch("music_catalogue.routers.persons.persons.create", new_callable=AsyncMock) as mock_create:
+        with patch("music_catalogue.routers.persons.Person.create", new_callable=AsyncMock) as mock_create:
             mock_create.side_effect = people
 
             response = test_client.post("/persons/bulk", json=payload)
@@ -116,7 +116,7 @@ class TestPersonEndpoints:
 
     def test_bulk_create_persons_api_error(self, test_client):
         """API errors propagate during bulk create."""
-        with patch("music_catalogue.routers.persons.persons.create", new_callable=AsyncMock) as mock_create:
+        with patch("music_catalogue.routers.persons.Person.create", new_callable=AsyncMock) as mock_create:
             mock_create.side_effect = APIError("Bulk failure")
 
             response = test_client.post("/persons/bulk", json=[{"legal_name": "Person"}])
