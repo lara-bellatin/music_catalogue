@@ -32,6 +32,7 @@ class CatalogueModel(BaseModel):
     search_query: ClassVar[Optional[str]] = None
     search_column: ClassVar[str] = "search_text"
     entity_type: ClassVar[Optional[EntityType]] = None
+    ref_model: ClassVar[BaseModel] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> Self:
@@ -107,7 +108,10 @@ class CatalogueModel(BaseModel):
                 .execute()
             )
 
-            return [cls.from_dict(item) for item in res.data] if res.data else []
+            if cls.ref_model and getattr(cls.ref_model, "from_dict", None):
+                return [cls.ref_model.from_dict(item) for item in res.data] if res.data else []
+            else:
+                return [cls.from_dict(item) for item in res.data] if res.data else []
 
         except PostgrestAPIError as e:
             raise APIError(str(e)) from None
@@ -138,7 +142,25 @@ class CatalogueModel(BaseModel):
             if not res.data or not res.data[0].get(cls.pk_column):
                 raise APIError(f"Unexpected error creating {cls.__name__}. No ID returned")
 
-            return await cls.get_by_id(res.data[0][cls.pk_column])
+            instance_id = res.data[0].get(cls.pk_column)
+
+            # Fetch external links if entity_type is defined
+            if cls.entity_type and hasattr(data, "external_links"):
+                from music_catalogue.crud.assets import bulk_create_external_links
+
+                await bulk_create_external_links(data.external_links, cls.entity_type, instance_id)
+
+            return await cls.get_by_id(instance_id)
 
         except PostgrestAPIError as e:
+            # Rollback on failure if ID is present
+            if instance_id:
+                await (
+                    supabase.table("external_links")
+                    .delete()
+                    .eq("entity_type", cls.entity_type)
+                    .eq("entity_id", instance_id)
+                    .execute()
+                )
+                await supabase.table(cls.table_name).delete().eq(cls.pk_column, instance_id).execute()
             raise APIError(str(e)) from None

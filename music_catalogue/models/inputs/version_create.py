@@ -34,12 +34,15 @@ class VersionCreate(BaseModel):
     @model_validator(mode="after")
     def validate(self):
         # Check release date
-        validate_date(self.release_date)
+        if self.release_date:
+            validate_date(str(self.release_date))
 
         # Check release year
-        validate_year(self.release_year)
+        if self.release_year:
+            validate_year(self.release_year)
 
         # Validate UUIDS
         validate_uuid(self.work_id)
         validate_uuid(self.primary_artist_id)
-        validate_uuid(self.based_on_version_id)
+        if self.based_on_version_id:
+            validate_uuid(self.based_on_version_id)

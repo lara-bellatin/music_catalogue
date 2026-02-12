@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from music_catalogue.models.base import CatalogueModel
 from music_catalogue.models.responses.assets import ExternalLink
-from music_catalogue.models.responses.references import ArtistRef, CreditRef
+from music_catalogue.models.responses.references import ArtistRef, CreditRef, PersonRef
 from music_catalogue.models.types import EntityType
 from music_catalogue.models.utils import _parse, _parse_list
 
@@ -34,6 +34,7 @@ class Person(CatalogueModel):
     table_name: ClassVar[str] = "persons"
     pk_column: ClassVar[str] = "person_id"
     entity_type: ClassVar[EntityType] = EntityType.PERSON
+    ref_model: ClassVar[BaseModel] = PersonRef
     query: ClassVar[str] = f"""
         person_id,
         legal_name,

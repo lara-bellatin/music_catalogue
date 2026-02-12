@@ -7,7 +7,7 @@ from music_catalogue.models.base import CatalogueModel
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.inputs.work_create import WorkCreate
 from music_catalogue.models.responses.assets import ExternalLink
-from music_catalogue.models.responses.references import CreditRef, VersionRef
+from music_catalogue.models.responses.references import CreditRef, VersionRef, WorkRef
 from music_catalogue.models.types import EntityType
 from music_catalogue.models.utils import _parse_list
 from supabase import PostgrestAPIError
@@ -31,6 +31,7 @@ class Work(CatalogueModel):
     table_name: ClassVar[str] = "works"
     pk_column: ClassVar[str] = "work_id"
     entity_type: ClassVar[EntityType] = EntityType.WORK
+    ref_model: ClassVar[BaseModel] = WorkRef
     query: ClassVar[str] = f"""
         work_id,
         title,
@@ -121,25 +122,6 @@ class Work(CatalogueModel):
                     .execute()
                 )
 
-            # Create external links
-            if data.external_links:
-                await (
-                    supabase.table("external_links")
-                    .insert(
-                        [
-                            {
-                                "entity_type": EntityType.WORK.value,
-                                "entity_id": work.id,
-                                **link.model_dump(exclude_none=True),
-                                # TODO: Remove hardcoded value once user implementation is done
-                                "added_by": "760c6a23-cf19-4e59-89aa-f6921943bc26",
-                            }
-                            for link in data.external_links
-                        ]
-                    )
-                    .execute()
-                )
-
             # Get work by ID to include complete information
             return await cls.get_by_id(work.id)
 
@@ -149,14 +131,6 @@ class Work(CatalogueModel):
                 await supabase.table("versions").delete().eq("work_id", work.id).execute()
                 await supabase.table("credits").delete().eq("work_id", work.id).execute()
                 await supabase.table("work_genres").delete().eq("work_id", work.id).execute()
-                await (
-                    supabase.table("external_links")
-                    .delete()
-                    .eq("entity_type", EntityType.WORK)
-                    .eq("entity_id", work.id)
-                    .execute()
-                )
-                await supabase.table("works").delete().eq("work_id", work.id).execute()
             raise APIError(str(e)) from None
         except Exception as e:
             raise e

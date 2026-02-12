@@ -77,7 +77,7 @@ class VersionRef(BaseModel):
             title=data["title"],
             work=_parse(WorkRef, data.get("work", None)) or None,
             version_type=VersionType(data["version_type"]),
-            primary_artist=_parse(ArtistRef, data.get("artist", None)) or None,
+            primary_artist=_parse(ArtistRef, data.get("primary_artist", None)) or None,
             release_year=data.get("release_year"),
         )
 

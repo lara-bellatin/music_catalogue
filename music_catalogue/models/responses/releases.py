@@ -1,10 +1,10 @@
 from datetime import date, datetime
 from typing import Any, ClassVar, Dict, List, Optional
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from music_catalogue.models.base import CatalogueModel
-from music_catalogue.models.responses.references import VersionRef
+from music_catalogue.models.responses.references import ReleaseRef, VersionRef
 from music_catalogue.models.types import (
     AudioChannel,
     AvailabilityStatus,
@@ -25,6 +25,7 @@ class Release(CatalogueModel):
     entity_type: ClassVar[EntityType] = EntityType.WORK
     query: ClassVar[str] = ""
     entity_type: ClassVar[EntityType] = EntityType.RELEASE
+    ref_model: ClassVar[BaseModel] = ReleaseRef
 
     id: str
     title: str

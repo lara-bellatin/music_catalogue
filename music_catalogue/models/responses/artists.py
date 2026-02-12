@@ -1,10 +1,13 @@
 from typing import ClassVar, Dict, List, Optional
 
+from pydantic import BaseModel
+
 from music_catalogue.crud.supabase_client import get_supabase
 from music_catalogue.models.base import CatalogueModel
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.inputs.artist_create import ArtistCreate
-from music_catalogue.models.responses.references import CreditRef, PersonRef, VersionRef
+from music_catalogue.models.responses.assets import ExternalLink
+from music_catalogue.models.responses.references import ArtistRef, CreditRef, PersonRef, VersionRef
 from music_catalogue.models.types import ArtistType, EntityType
 from music_catalogue.models.utils import _parse, _parse_list
 from supabase import PostgrestAPIError
@@ -14,6 +17,7 @@ class Artist(CatalogueModel):
     table_name: ClassVar[str] = "artists"
     pk_column: ClassVar[str] = "artist_id"
     entity_type: ClassVar[EntityType] = EntityType.ARTIST
+    ref_model: ClassVar[BaseModel] = ArtistRef
     query: ClassVar[str] = f"""
         artist_id,
         person:persons({PersonRef.query}),
@@ -46,6 +50,7 @@ class Artist(CatalogueModel):
     members: Optional[List["ArtistMembership"]] = None
     credits: Optional[List[CreditRef]] = None
     versions: Optional[List[VersionRef]] = None
+    external_links: Optional[List[ExternalLink]] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Artist":
@@ -86,10 +91,6 @@ class Artist(CatalogueModel):
             return artist
 
         except PostgrestAPIError as e:
-            # Rollback on failure
-            if artist and artist.id:
-                await supabase.table("artist_memberships").delete().eq("group_id", artist.id).execute()
-                await supabase.table("artists").delete().eq("artist_id", artist.id).execute()
             raise APIError(str(e)) from None
 
 
