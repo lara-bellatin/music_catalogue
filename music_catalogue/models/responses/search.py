@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 from pydantic import BaseModel
 
@@ -9,6 +9,7 @@ class UnifiedSearchResult(BaseModel):
     entity_type: EntityType
     entity_id: str
     display_text: str
+    secondary_text: Optional[str] = None
     rank: float
 
     @classmethod
@@ -17,5 +18,6 @@ class UnifiedSearchResult(BaseModel):
             entity_type=EntityType(data["entity_type"]),
             entity_id=data["entity_id"],
             display_text=data["display_text"],
+            secondary_text=data.get("secondary_text"),
             rank=data["rank"],
         )
