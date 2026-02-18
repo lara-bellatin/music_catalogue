@@ -54,4 +54,5 @@ class PerformanceCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate(self):
-        validate_date(self.performance_date)
+        if self.performance_date:
+            validate_date(str(self.performance_date))
