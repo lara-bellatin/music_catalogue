@@ -10,6 +10,7 @@ class EntityType(str, Enum):
     MEDIA_ITEM = "media_item"
     CREDIT = "credit"
     GENRE = "genre"
+    PERFORMANCE = "performance"
 
 
 class ArtistType(str, Enum):

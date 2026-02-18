@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import ClassVar, Dict, List, Optional
 
 from pydantic import BaseModel
@@ -158,4 +158,80 @@ class CreditRef(BaseModel):
             person=_parse(PersonRef, data.get("person")),
             work=_parse(WorkRef, data.get("work")),
             version=_parse(VersionRef, data.get("version")),
+        )
+
+
+class PerformanceArtistRef(BaseModel):
+    query: ClassVar[str] = f"""
+        performance_artist_id,
+        role,
+        billing_order,
+        notes,
+        artist:artists({ArtistRef.query}),
+        person:persons({PersonRef.query})
+    """
+
+    role: Optional[str] = None
+    billing_order: Optional[int] = None
+    notes: Optional[str] = None
+    artist: Optional[ArtistRef] = None
+    person: Optional[PersonRef] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "PerformanceArtistRef":
+        return cls(
+            role=data.get("role"),
+            billing_order=data.get("billing_order"),
+            notes=data.get("notes"),
+            artist=_parse(ArtistRef, data.get("artist")),
+            person=_parse(PersonRef, data.get("person")),
+        )
+
+
+class PerformanceWorkRef(BaseModel):
+    query: ClassVar[str] = f"""
+        performance_work_id,
+        set_order,
+        set_name,
+        notes,
+        work:works({WorkRef.query}),
+        version:versions({VersionRef.query})
+    """
+
+    set_order: Optional[int] = None
+    set_name: Optional[str] = None
+    notes: Optional[str] = None
+    work: Optional[WorkRef] = None
+    version: Optional[VersionRef] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "PerformanceWorkRef":
+        return cls(
+            set_order=data.get("set_order"),
+            set_name=data.get("set_name"),
+            notes=data.get("notes"),
+            work=_parse(WorkRef, data.get("work")),
+            version=_parse(VersionRef, data.get("version")),
+        )
+
+
+class PerformanceRef(BaseModel):
+    query: ClassVar[str] = "performance_id, name, performance_date, venue, city"
+
+    id: str
+    name: str
+    performance_date: Optional[date] = None
+    venue: Optional[str] = None
+    city: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "PerformanceRef":
+        return cls(
+            id=data["performance_id"],
+            name=data["name"],
+            performance_date=datetime.strptime(data["performance_date"], "%Y-%m-%d").date()
+            if data.get("performance_date")
+            else None,
+            venue=data.get("venue"),
+            city=data.get("city"),
         )
