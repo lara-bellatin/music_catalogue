@@ -83,6 +83,8 @@ class VersionRef(BaseModel):
 
 
 class ReleaseRef(BaseModel):
+    query: ClassVar[str] = "release_id, title, release_date, release_category"
+
     id: str
     title: str
     release_year: Optional[int] = None
