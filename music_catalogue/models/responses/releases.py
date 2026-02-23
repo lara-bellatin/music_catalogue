@@ -3,7 +3,10 @@ from typing import Any, ClassVar, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from music_catalogue.crud.supabase_client import get_supabase
 from music_catalogue.models.base import CatalogueModel
+from music_catalogue.models.exceptions import APIError
+from music_catalogue.models.responses.assets import ExternalLink
 from music_catalogue.models.responses.references import ReleaseRef, VersionRef
 from music_catalogue.models.types import (
     AudioChannel,
@@ -17,15 +20,57 @@ from music_catalogue.models.utils import (
     _parse,
     _parse_list,
 )
+from supabase import PostgrestAPIError
 
 
 class Release(CatalogueModel):
-    table_name: ClassVar[str] = "works"
-    pk_column: ClassVar[str] = "work_id"
-    entity_type: ClassVar[EntityType] = EntityType.WORK
-    query: ClassVar[str] = ""
+    table_name: ClassVar[str] = "releases"
+    pk_column: ClassVar[str] = "release_id"
     entity_type: ClassVar[EntityType] = EntityType.RELEASE
     ref_model: ClassVar[BaseModel] = ReleaseRef
+    query: ClassVar[str] = f"""
+        release_id,
+        title,
+        release_date,
+        release_category,
+        catalog_number,
+        publisher_number,
+        label,
+        region,
+        release_stage,
+        cover_art_url,
+        total_discs,
+        total_tracks,
+        notes,
+        release_media_items(
+            media_item_id,
+            medium_type,
+            format_name,
+            platform_or_vendor,
+            bitrate_kbps,
+            sample_rate_hz,
+            bit_depth,
+            rpm,
+            channels,
+            packaging,
+            accessories,
+            pressing_details,
+            sku,
+            barcode,
+            catalog_variation,
+            availability_status,
+            notes
+        ),
+        release_tracks(
+            release_track_id,
+            track_number,
+            disc_number,
+            side,
+            is_hidden,
+            notes,
+            version:versions({VersionRef.query})
+        )
+    """
 
     id: str
     title: str
@@ -41,6 +86,8 @@ class Release(CatalogueModel):
     total_tracks: int
     notes: Optional[str] = None
     media_items: List["ReleaseMediaItem"] = Field(default_factory=list)
+    tracks: List["ReleaseTrack"] = Field(default_factory=list)
+    external_links: List[ExternalLink] = Field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Release":
@@ -61,7 +108,46 @@ class Release(CatalogueModel):
             total_tracks=data.get("total_tracks"),
             notes=data.get("notes"),
             media_items=_parse_list(ReleaseMediaItem, data.get("release_media_items")),
+            tracks=_parse_list(ReleaseTrack, data.get("release_tracks")),
         )
+
+    @classmethod
+    async def create(cls, data, exclude: set = None) -> "Release":
+        exclude = (exclude or set()) | {"media_items", "tracks", "external_links"}
+        supabase = await get_supabase()
+        release = None
+
+        try:
+            release = await super().create(data, exclude=exclude)
+
+            if data.media_items:
+                await (
+                    supabase.table("release_media_items")
+                    .insert(
+                        [{"release_id": release.id, **item.model_dump(exclude_none=True)} for item in data.media_items]
+                    )
+                    .execute()
+                )
+
+            if data.tracks:
+                await (
+                    supabase.table("release_tracks")
+                    .insert(
+                        [{"release_id": release.id, **track.model_dump(exclude_none=True)} for track in data.tracks]
+                    )
+                    .execute()
+                )
+
+            return await cls.get_by_id(release.id)
+
+        except PostgrestAPIError as e:
+            if release and release.id:
+                await supabase.table("release_media_items").delete().eq("release_id", release.id).execute()
+                await supabase.table("release_tracks").delete().eq("release_id", release.id).execute()
+                await supabase.table("releases").delete().eq("release_id", release.id).execute()
+            raise APIError(str(e)) from None
+        except Exception as e:
+            raise e
 
 
 class ReleaseMediaItem(CatalogueModel):
@@ -96,14 +182,16 @@ class ReleaseMediaItem(CatalogueModel):
             sample_rate_hz=data.get("sample_rate_hz"),
             bit_depth=data.get("bit_depth"),
             rpm=data.get("rpm"),
-            channels=AudioChannel(data.get("channels")),
+            channels=AudioChannel(data["channels"]) if data.get("channels") else None,
             packaging=data.get("packaging"),
             accessories=data.get("accessories"),
             pressing_details=data.get("pressing_details"),
             sku=data.get("sku"),
             barcode=data.get("barcode"),
             catalog_variation=data.get("catalog_variation"),
-            availability_status=AvailabilityStatus(data.get("availability_status")),
+            availability_status=AvailabilityStatus(data["availability_status"])
+            if data.get("availability_status")
+            else AvailabilityStatus.IN_PRINT,
         )
 
 
