@@ -3,13 +3,19 @@
 import argparse
 import asyncio
 import json
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, TypedDict
 from urllib.request import urlopen
 from xml.etree import ElementTree
 
 from music_catalogue.crud import persons, works
+from music_catalogue.crud.supabase_client import get_supabase
+from music_catalogue.models.inputs.genre_create import GenreCreate
+from music_catalogue.models.inputs.performance_create import PerformanceCreate, PerformanceWorkCreate
 from music_catalogue.models.inputs.person_create import PersonCreate
 from music_catalogue.models.inputs.work_create import WorkCreate, WorkCreditCreate
+from music_catalogue.models.responses.genres import Genre
+from music_catalogue.models.responses.performances import Performance
 from music_catalogue.models.responses.works import Work
 
 MEI_NS = {"mei": "http://www.music-encoding.org/ns/mei"}
@@ -38,6 +44,13 @@ class ExtractedExternalLink(TypedDict):
     source_verified: bool = True
 
 
+class ExtractedPerformance(TypedDict):
+    date: Optional[str]
+    venue: Optional[str]
+    city: Optional[str]
+    notes: Optional[str]
+
+
 class ExtractedWorkData(TypedDict):
     title: str
     language: str
@@ -48,6 +61,8 @@ class ExtractedWorkData(TypedDict):
     history: Optional[str] = None
     contributors: Optional[List[ExtractedContributor]] = None
     external_links: Optional[List[Dict[str, Any]]] = None
+    genres: Optional[List[str]] = None
+    performances: Optional[List[ExtractedPerformance]] = None
 
 
 def _strip(text: Optional[str]) -> Optional[str]:
@@ -131,6 +146,58 @@ def parse_history(work_element: ElementTree.Element) -> Optional[str]:
     return _strip(ElementTree.tostring(history_el, method="text", encoding="unicode"))
 
 
+def parse_genres(work_element: ElementTree.Element) -> List[str]:
+    terms = work_element.findall(".//mei:classification/mei:termList/mei:term", MEI_NS)
+    return [name for t in terms if (name := _strip(t.text))]
+
+
+def parse_performances(work_element: ElementTree.Element) -> List[ExtractedPerformance]:
+    events = work_element.findall(
+        ".//mei:expressionList/mei:expression/mei:history/mei:eventList[@type='performances']/mei:event", MEI_NS
+    )
+    performances: List[ExtractedPerformance] = []
+    for event in events:
+        date_el = event.find("mei:date", MEI_NS)
+        venue_el = event.find("mei:geogName[@role='venue']", MEI_NS)
+        place_el = event.find("mei:geogName[@role='place']", MEI_NS)
+        desc_el = event.find("mei:desc", MEI_NS)
+
+        performances.append(
+            ExtractedPerformance(
+                date=date_el.get("isodate") if date_el is not None else None,
+                venue=_strip(venue_el.text) if venue_el is not None else None,
+                city=_strip(place_el.text) if place_el is not None else None,
+                notes=_strip(ElementTree.tostring(desc_el, method="text", encoding="unicode"))
+                if desc_el is not None
+                else None,
+            )
+        )
+    return performances
+
+
+def _build_performance_name(title: str, perf: ExtractedPerformance) -> str:
+    parts = [title]
+    if perf.get("venue"):
+        parts.append(f"at {perf['venue']}")
+    elif perf.get("city"):
+        parts.append(f"in {perf['city']}")
+    if perf.get("date"):
+        parts.append(f"({perf['date']})")
+    return " ".join(parts)
+
+
+def _parse_isodate(isodate: Optional[str] = None) -> Optional[str]:
+    """Parse an ISO date string into a date."""
+    if not isodate:
+        return None
+    cleaned = isodate.strip()
+    try:
+        datetime.strptime(cleaned, "%Y-%m-%d")
+        return cleaned
+    except ValueError:
+        return None
+
+
 def transform_mei(source: str) -> Dict[str, Any]:
     with urlopen(source) as file:
         data = file.read()
@@ -147,6 +214,8 @@ def transform_mei(source: str) -> Dict[str, Any]:
     origin_year_start, origin_year_end = parse_creation_dates(work_element)
     history_text = parse_history(work_element)
     contributors = parse_contributors(work_element)
+    genres = parse_genres(work_element)
+    performances = parse_performances(work_element)
     external_link = ExtractedExternalLink(
         label="Catalogue of Carl Nielsen's Works",
         url=source,
@@ -163,6 +232,8 @@ def transform_mei(source: str) -> Dict[str, Any]:
         history=history_text,
         contributors=contributors,
         external_links=[external_link],
+        genres=genres or None,
+        performances=performances or None,
     )
 
     return work_payload
@@ -183,7 +254,18 @@ async def add_to_database(extracted_data: ExtractedWorkData) -> Work:
             WorkCreditCreate(person_id=person.id, role=contributor["role"], is_primary=contributor["is_primary"])
         )
 
-    return await works.create(
+    # Search or create genres, collect genre_ids
+    genre_ids = []
+    for genre_name in extracted_data.get("genres", []):
+        matches = await Genre.search(genre_name)
+        exact = next((g for g in matches if g.name.lower() == genre_name.lower()), None)
+        if exact:
+            genre_ids.append(exact.id)
+        else:
+            genre = await Genre.create(GenreCreate(name=genre_name))
+            genre_ids.append(genre.id)
+
+    work = await works.create(
         WorkCreate(
             title=extracted_data["title"],
             language=extracted_data["language"],
@@ -194,8 +276,46 @@ async def add_to_database(extracted_data: ExtractedWorkData) -> Work:
             notes=extracted_data.get("history"),
             external_links=extracted_data.get("external_links"),
             credits=credits or None,
+            genre_ids=genre_ids or None,
         )
     )
+
+    # Link performances to the work, reusing existing ones when possible
+    supabase = await get_supabase()
+    for perf_data in extracted_data.get("performances", []):
+        perf_date = _parse_isodate(perf_data.get("date"))
+        venue = perf_data.get("venue")
+        city = perf_data.get("city")
+
+        existing = None
+        if perf_date:
+            query = supabase.table("performances").select("performance_id").eq("performance_date", perf_date)
+            if venue:
+                query = query.eq("venue", venue)
+            elif city:
+                query = query.eq("city", city)
+            res = await query.execute()
+            if res.data:
+                existing = res.data[0]["performance_id"]
+
+        if existing:
+            # Add work to existing performance
+            await supabase.table("performance_works").insert({"performance_id": existing, "work_id": work.id}).execute()
+        else:
+            # Create new performance
+            name = _build_performance_name(extracted_data["title"], perf_data)
+            await Performance.create(
+                PerformanceCreate(
+                    name=name,
+                    performance_date=perf_date,
+                    venue=venue,
+                    city=city,
+                    notes=perf_data.get("notes"),
+                    works=[PerformanceWorkCreate(work_id=work.id)],
+                )
+            )
+
+    return work
 
 
 async def main() -> None:
