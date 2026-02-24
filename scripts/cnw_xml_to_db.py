@@ -8,14 +8,19 @@ from typing import Any, Dict, List, Optional, Tuple, TypedDict
 from urllib.request import urlopen
 from xml.etree import ElementTree
 
-from music_catalogue.crud import persons, works
 from music_catalogue.crud.supabase_client import get_supabase
+from music_catalogue.models.inputs.credit_create import CreditCreate
 from music_catalogue.models.inputs.genre_create import GenreCreate
-from music_catalogue.models.inputs.performance_create import PerformanceCreate, PerformanceWorkCreate
+from music_catalogue.models.inputs.performance_create import (
+    PerformanceArtistCreate,
+    PerformanceCreate,
+    PerformanceWorkCreate,
+)
 from music_catalogue.models.inputs.person_create import PersonCreate
-from music_catalogue.models.inputs.work_create import WorkCreate, WorkCreditCreate
+from music_catalogue.models.inputs.work_create import WorkCreate
 from music_catalogue.models.responses.genres import Genre
 from music_catalogue.models.responses.performances import Performance
+from music_catalogue.models.responses.persons import Person
 from music_catalogue.models.responses.works import Work
 
 MEI_NS = {"mei": "http://www.music-encoding.org/ns/mei"}
@@ -44,11 +49,17 @@ class ExtractedExternalLink(TypedDict):
     source_verified: bool = True
 
 
+class ExtractedPerformer(TypedDict):
+    name: str
+    role: str
+
+
 class ExtractedPerformance(TypedDict):
-    date: Optional[str]
-    venue: Optional[str]
-    city: Optional[str]
-    notes: Optional[str]
+    date: Optional[str] = None
+    venue: Optional[str] = None
+    city: Optional[str] = None
+    notes: Optional[str] = None
+    performers: Optional[List[ExtractedPerformer]] = None
 
 
 class ExtractedWorkData(TypedDict):
@@ -151,6 +162,20 @@ def parse_genres(work_element: ElementTree.Element) -> List[str]:
     return [name for t in terms if (name := _strip(t.text))]
 
 
+def _parse_performer(pers_el: ElementTree.Element) -> Optional[ExtractedPerformer]:
+    raw = _strip(pers_el.text)
+    if not raw:
+        return None
+    xml_role = pers_el.get("role", "performer")
+
+    # For performers, the text can contain "Name, instrument"
+    if xml_role == "performer" and ", " in raw:
+        name, instrument = raw.rsplit(", ", 1)
+        return ExtractedPerformer(name=name.strip(), role=instrument.strip())
+
+    return ExtractedPerformer(name=raw, role=xml_role)
+
+
 def parse_performances(work_element: ElementTree.Element) -> List[ExtractedPerformance]:
     events = work_element.findall(
         ".//mei:expressionList/mei:expression/mei:history/mei:eventList[@type='performances']/mei:event", MEI_NS
@@ -162,6 +187,8 @@ def parse_performances(work_element: ElementTree.Element) -> List[ExtractedPerfo
         place_el = event.find("mei:geogName[@role='place']", MEI_NS)
         desc_el = event.find("mei:desc", MEI_NS)
 
+        performers = [p for pers_el in event.findall("mei:persName", MEI_NS) if (p := _parse_performer(pers_el))]
+
         performances.append(
             ExtractedPerformance(
                 date=date_el.get("isodate") if date_el is not None else None,
@@ -170,6 +197,7 @@ def parse_performances(work_element: ElementTree.Element) -> List[ExtractedPerfo
                 notes=_strip(ElementTree.tostring(desc_el, method="text", encoding="unicode"))
                 if desc_el is not None
                 else None,
+                performers=performers or None,
             )
         )
     return performances
@@ -239,19 +267,23 @@ def transform_mei(source: str) -> Dict[str, Any]:
     return work_payload
 
 
+async def _resolve_person(name: str) -> Person:
+    """Find an existing person by name, or create one."""
+    matches = await Person.search(name)
+    # If there's matches, get only exact ones and assume it's the first one
+    exact = next((m for m in matches if m.name.lower() == name.lower()), None)
+    if exact:
+        return exact
+    return await Person.create(PersonCreate(legal_name=name))
+
+
 async def add_to_database(extracted_data: ExtractedWorkData) -> Work:
     # Check if there's already people with those legal names in the database
     credits = []
     for contributor in extracted_data.get("contributors", []):
-        possible_matches = await persons.search(contributor["name"])
-        # If nothing found, create new person
-        if not possible_matches:
-            person = await persons.create(PersonCreate(legal_name=contributor["name"]))
-        # If there's matches, assume it's the first one
-        else:
-            person = possible_matches[0]
+        person = await _resolve_person(contributor["name"])
         credits.append(
-            WorkCreditCreate(person_id=person.id, role=contributor["role"], is_primary=contributor["is_primary"])
+            CreditCreate(person_id=person.id, role=contributor["role"], is_primary=contributor["is_primary"])
         )
 
     # Search or create genres, collect genre_ids
@@ -265,7 +297,7 @@ async def add_to_database(extracted_data: ExtractedWorkData) -> Work:
             genre = await Genre.create(GenreCreate(name=genre_name))
             genre_ids.append(genre.id)
 
-    work = await works.create(
+    work = await Work.create(
         WorkCreate(
             title=extracted_data["title"],
             language=extracted_data["language"],
@@ -302,6 +334,12 @@ async def add_to_database(extracted_data: ExtractedWorkData) -> Work:
             # Add work to existing performance
             await supabase.table("performance_works").insert({"performance_id": existing, "work_id": work.id}).execute()
         else:
+            # Resolve performers to person IDs
+            artists = []
+            for performer in perf_data.get("performers") or []:
+                person = await _resolve_person(performer["name"])
+                artists.append(PerformanceArtistCreate(person_id=person.id, role=performer["role"]))
+
             # Create new performance
             name = _build_performance_name(extracted_data["title"], perf_data)
             await Performance.create(
@@ -312,6 +350,7 @@ async def add_to_database(extracted_data: ExtractedWorkData) -> Work:
                     city=city,
                     notes=perf_data.get("notes"),
                     works=[PerformanceWorkCreate(work_id=work.id)],
+                    artists=artists or None,
                 )
             )
 
