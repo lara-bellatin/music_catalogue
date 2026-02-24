@@ -1,10 +1,8 @@
 import pytest
 
+from music_catalogue.models.responses.genres import Genre
 from music_catalogue.models.responses.references import CreditRef as WorkCredit
-from music_catalogue.models.responses.works import (
-    Genre,
-    Work,
-)
+from music_catalogue.models.responses.works import Work
 
 
 class TestGenre:
