@@ -7,24 +7,11 @@ from music_catalogue.models.base import CatalogueModel
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.inputs.work_create import WorkCreate
 from music_catalogue.models.responses.assets import ExternalLink
+from music_catalogue.models.responses.genres import Genre
 from music_catalogue.models.responses.references import CreditRef, VersionRef, WorkRef
 from music_catalogue.models.types import EntityType
 from music_catalogue.models.utils import _parse_list
 from supabase import PostgrestAPIError
-
-
-class Genre(BaseModel):
-    id: str
-    name: str
-    description: Optional[str] = None
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> "Genre":
-        return cls(
-            id=data["genre_id"],
-            name=data["name"],
-            description=data.get("description"),
-        )
 
 
 class Work(CatalogueModel):
