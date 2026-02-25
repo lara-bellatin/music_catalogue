@@ -42,14 +42,14 @@ class WorkRef(BaseModel):
 
     id: str
     title: str
-    language: str
+    language: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> "WorkRef":
         return cls(
             id=data["work_id"],
             title=data["title"],
-            language=data["language"],
+            language=data.get("language"),
         )
 
 
@@ -103,6 +103,8 @@ class ReleaseRef(BaseModel):
 
 
 class ReleaseMediaItemRef(BaseModel):
+    query: ClassVar[str] = f"media_item_id, release:releases({ReleaseRef.query}), medium_type, format_name"
+
     id: str
     medium_type: MediumType
     format_name: str

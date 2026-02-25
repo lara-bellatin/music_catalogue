@@ -13,12 +13,19 @@ from music_catalogue.models.types import EntityType
 
 
 # Concrete subclass for testing
+class FakeEntityRef(BaseModel):
+    query: ClassVar[str] = "fake_id, name"
+
+    id: str
+    name: str
+
+
 class FakeEntity(CatalogueModel):
     table_name: ClassVar[str] = "fake_entities"
     pk_column: ClassVar[str] = "fake_id"
     query: ClassVar[str] = "fake_id, name"
-    search_query: ClassVar[Optional[str]] = "fake_id, name"
     entity_type: ClassVar[Optional[EntityType]] = EntityType.WORK
+    ref_model: ClassVar[BaseModel] = FakeEntityRef
 
     id: str
     name: str

@@ -1,5 +1,4 @@
-from datetime import date
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, model_validator
 
@@ -22,6 +21,7 @@ class PerformanceArtistCreate(BaseModel):
             validate_uuid(self.artist_id)
         if self.person_id:
             validate_uuid(self.person_id)
+        return self
 
 
 class PerformanceWorkCreate(BaseModel):
@@ -39,14 +39,16 @@ class PerformanceWorkCreate(BaseModel):
             validate_uuid(self.work_id)
         if self.version_id:
             validate_uuid(self.version_id)
+        return self
 
 
 class PerformanceCreate(BaseModel):
     name: str
-    performance_date: Optional[date] = None
+    performance_date: Optional[str] = None
     venue: Optional[str] = None
     city: Optional[str] = None
     country: Optional[str] = None
+    identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
     artists: Optional[List[PerformanceArtistCreate]] = None
     works: Optional[List[PerformanceWorkCreate]] = None
@@ -55,4 +57,5 @@ class PerformanceCreate(BaseModel):
     @model_validator(mode="after")
     def validate(self):
         if self.performance_date:
-            validate_date(str(self.performance_date))
+            validate_date(self.performance_date)
+        return self

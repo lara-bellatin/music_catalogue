@@ -1,4 +1,4 @@
-from typing import ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -27,6 +27,7 @@ class Artist(CatalogueModel):
         alternative_names,
         start_year,
         end_year,
+        identifiers,
         artist_memberships(
             membership_id,
             start_year,
@@ -47,6 +48,7 @@ class Artist(CatalogueModel):
     alternative_names: Optional[List[str]] = None
     start_year: Optional[int] = None
     end_year: Optional[int] = None
+    identifiers: Optional[List[Dict[str, Any]]] = None
     members: Optional[List["ArtistMembership"]] = None
     credits: Optional[List[CreditRef]] = None
     versions: Optional[List[VersionRef]] = None
@@ -63,6 +65,7 @@ class Artist(CatalogueModel):
             alternative_names=data.get("alternative_names"),
             start_year=data.get("start_year"),
             end_year=data.get("end_year"),
+            identifiers=data.get("identifiers"),
             members=_parse_list(ArtistMembership, data.get("artist_memberships", None)) or None,
             credits=_parse_list(CreditRef, data.get("credits", None)) or None,
             versions=_parse_list(VersionRef, data.get("versions", None)) or None,
@@ -70,7 +73,7 @@ class Artist(CatalogueModel):
 
     @classmethod
     async def create(cls, data: "ArtistCreate", exclude: set = None) -> "Artist":
-        exclude = (exclude or set()) | {"members"}
+        exclude = (exclude or set()) | {"members", "external_links"}
         artist = None
         supabase = await get_supabase()
 

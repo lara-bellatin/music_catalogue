@@ -1,11 +1,8 @@
-import uuid
-from datetime import date
-
 import pytest
 from pydantic import ValidationError
 
 from music_catalogue.models.inputs.assets_create import ExternalLinkCreate
-from music_catalogue.models.inputs.credit_create import CreditCreate
+from music_catalogue.models.inputs.credit_create import WorkVersionCreditCreate
 from music_catalogue.models.inputs.version_create import VersionCreate
 from music_catalogue.models.types import CompletenessLevel, VersionType
 
@@ -13,21 +10,21 @@ from music_catalogue.models.types import CompletenessLevel, VersionType
 class TestVersionCreate:
     """Tests for VersionCreate model."""
 
-    def test_validate_minimal_success(self):
+    def test_validate_minimal_success(self, sample_uuid):
         VersionCreate(
             title="A Version",
-            work_id=str(uuid.uuid4()),
-            primary_artist_id=str(uuid.uuid4()),
+            work_id=sample_uuid,
+            primary_artist_id=sample_uuid,
         )
 
-    def test_validate_full_success(self):
+    def test_validate_full_success(self, sample_uuid):
         VersionCreate(
             title="A Version",
-            work_id=str(uuid.uuid4()),
-            primary_artist_id=str(uuid.uuid4()),
+            work_id=sample_uuid,
+            primary_artist_id=sample_uuid,
             version_type=VersionType.LIVE,
-            based_on_version_id=str(uuid.uuid4()),
-            release_date=date(2020, 1, 1),
+            based_on_version_id=sample_uuid,
+            release_date="2020-01-01",
             release_year=2020,
             duration_seconds=600,
             bpm=120,
@@ -36,9 +33,9 @@ class TestVersionCreate:
             completeness_level=CompletenessLevel.COMPLETE,
             notes="Recorded at venue",
             credits=[
-                CreditCreate(
-                    person_id=str(uuid.uuid4()),
-                    version_id=str(uuid.uuid4()),
+                WorkVersionCreditCreate(
+                    person_id=sample_uuid,
+                    version_id=sample_uuid,
                     role="Performer",
                 )
             ],
@@ -46,69 +43,69 @@ class TestVersionCreate:
                 ExternalLinkCreate(
                     label="Spotify",
                     url="https://open.spotify.com/track/123",
-                    added_by_id=str(uuid.uuid4()),
+                    added_by_id=sample_uuid,
                 )
             ],
         )
 
-    def test_validate_invalid_work_id_raises(self):
+    def test_validate_invalid_work_id_raises(self, sample_uuid):
         with pytest.raises(ValidationError) as exc_info:
             VersionCreate(
                 title="Invalid Work",
                 work_id="not-a-uuid",
-                primary_artist_id=str(uuid.uuid4()),
+                primary_artist_id=sample_uuid,
             )
 
         assert "Invalid UUID" in str(exc_info.value)
 
-    def test_validate_invalid_primary_artist_id_raises(self):
+    def test_validate_invalid_primary_artist_id_raises(self, sample_uuid):
         with pytest.raises(ValidationError) as exc_info:
             VersionCreate(
                 title="Invalid Artist",
-                work_id=str(uuid.uuid4()),
+                work_id=sample_uuid,
                 primary_artist_id="not-a-uuid",
             )
 
         assert "Invalid UUID" in str(exc_info.value)
 
-    def test_validate_invalid_based_on_version_id_raises(self):
+    def test_validate_invalid_based_on_version_id_raises(self, sample_uuid):
         with pytest.raises(ValidationError) as exc_info:
             VersionCreate(
                 title="Invalid Based On",
-                work_id=str(uuid.uuid4()),
-                primary_artist_id=str(uuid.uuid4()),
+                work_id=sample_uuid,
+                primary_artist_id=sample_uuid,
                 based_on_version_id="not-a-uuid",
             )
 
         assert "Invalid UUID" in str(exc_info.value)
 
-    def test_validate_invalid_release_year_raises(self):
+    def test_validate_invalid_release_year_raises(self, sample_uuid):
         with pytest.raises(ValidationError) as exc_info:
             VersionCreate(
                 title="Impossible Year",
-                work_id=str(uuid.uuid4()),
-                primary_artist_id=str(uuid.uuid4()),
+                work_id=sample_uuid,
+                primary_artist_id=sample_uuid,
                 release_year=1234567890,
             )
 
         assert "Invalid year" in str(exc_info.value)
 
-    def test_validate_invalid_credit_propagates(self):
+    def test_validate_invalid_credit_propagates(self, sample_uuid):
         with pytest.raises(ValidationError) as exc_info:
             VersionCreate(
                 title="Invalid Credit",
-                work_id=str(uuid.uuid4()),
-                primary_artist_id=str(uuid.uuid4()),
-                credits=[CreditCreate(version_id=str(uuid.uuid4()), role="Composer")],
+                work_id=sample_uuid,
+                primary_artist_id=sample_uuid,
+                credits=[WorkVersionCreditCreate(version_id=sample_uuid, role="Composer")],
             )
 
         assert "Either person or artist ID" in str(exc_info.value)
 
-    def test_validate_defaults(self):
+    def test_validate_defaults(self, sample_uuid):
         version = VersionCreate(
             title="Defaults",
-            work_id=str(uuid.uuid4()),
-            primary_artist_id=str(uuid.uuid4()),
+            work_id=sample_uuid,
+            primary_artist_id=sample_uuid,
         )
 
         assert version.version_type is VersionType.ORIGINAL

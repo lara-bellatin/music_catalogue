@@ -1,5 +1,5 @@
 from datetime import date
-from typing import ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -41,6 +41,7 @@ class Person(CatalogueModel):
         birth_date,
         death_date,
         pronouns,
+        identifiers,
         notes,
         artist:artists({ArtistRef.query}),
         artist_memberships(
@@ -59,6 +60,7 @@ class Person(CatalogueModel):
     birth_date: Optional[date] = None
     death_date: Optional[date] = None
     pronouns: Optional[str] = None
+    identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
     credits: List[CreditRef] = Field(default_factory=list)
     memberships: Optional[List[PersonArtistMembership]] = None
@@ -72,6 +74,7 @@ class Person(CatalogueModel):
             birth_date=date.fromisoformat(data.get("birth_date")) if data.get("birth_date") else None,
             death_date=date.fromisoformat(data.get("death_date")) if data.get("death_date") else None,
             pronouns=data.get("pronouns"),
+            identifiers=data.get("identifiers"),
             notes=data.get("notes"),
             credits=_parse_list(CreditRef, data.get("credits")),
             memberships=_parse_list(PersonArtistMembership, data.get("artist_memberships")) or None,

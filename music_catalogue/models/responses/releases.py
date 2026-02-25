@@ -30,7 +30,7 @@ class Release(CatalogueModel):
     ref_model: ClassVar[BaseModel] = ReleaseRef
     query: ClassVar[str] = f"""
         release_id,
-        title,
+        release_title,
         release_date,
         release_category,
         catalog_number,
@@ -41,6 +41,7 @@ class Release(CatalogueModel):
         cover_art_url,
         total_discs,
         total_tracks,
+        identifiers,
         notes,
         release_media_items(
             media_item_id,
@@ -66,7 +67,7 @@ class Release(CatalogueModel):
             track_number,
             disc_number,
             side,
-            is_hidden,
+            is_hidden_track,
             notes,
             version:versions({VersionRef.query})
         )
@@ -84,6 +85,7 @@ class Release(CatalogueModel):
     cover_art_url: Optional[str] = None
     total_discs: int = 1
     total_tracks: int
+    identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
     media_items: List["ReleaseMediaItem"] = Field(default_factory=list)
     tracks: List["ReleaseTrack"] = Field(default_factory=list)
@@ -93,7 +95,7 @@ class Release(CatalogueModel):
     def from_dict(cls, data: Dict) -> "Release":
         return cls(
             id=data["release_id"],
-            title=data["title"],
+            title=data["release_title"],
             release_date=datetime.strptime(data.get("release_date"), "%Y-%m-%d").date()
             if data.get("release_date")
             else None,
@@ -106,6 +108,7 @@ class Release(CatalogueModel):
             cover_art_url=data.get("cover_art_url"),
             total_discs=data.get("total_discs"),
             total_tracks=data.get("total_tracks"),
+            identifiers=data.get("identifiers"),
             notes=data.get("notes"),
             media_items=_parse_list(ReleaseMediaItem, data.get("release_media_items")),
             tracks=_parse_list(ReleaseTrack, data.get("release_tracks")),
@@ -214,6 +217,6 @@ class ReleaseTrack(CatalogueModel):
             track_number=data["track_number"],
             disc_number=data.get("disc_number"),
             side=data.get("side"),
-            is_hidden=data.get("is_hidden"),
+            is_hidden=data.get("is_hidden_track"),
             notes=data.get("notes"),
         )

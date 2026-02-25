@@ -3,6 +3,7 @@
 Music Catalogue is a FastAPI service that exposes REST endpoints for exploring classical and popular music metadata stored in Supabase. The project bundles domain models for different musical entities such as works, artists, people, genres, etc. plus CRUD utilities and a unified search RPC for full-text discovery across entities.
 
 ## Features
+
 - Async FastAPI application with automatic OpenAPI documentation at `/docs`.
 - Supabase-backed CRUD modules for all entities, including deep relational selects.
 - Unified search endpoint that allows users to query from all entities.
@@ -10,6 +11,7 @@ Music Catalogue is a FastAPI service that exposes REST endpoints for exploring c
 - Pytest suite validating CRUD behavior, endpoint contracts, and helper utilities.
 
 ## Project Structure
+
 ```
 music_catalogue/
 ├── music_catalogue/
@@ -24,28 +26,31 @@ music_catalogue/
 ```
 
 ## Prerequisites
+
 - Python 3.13+
 - [Poetry](https://python-poetry.org/docs/#installation)
 - Supabase project credentials (`SUPABASE_URL` and `SUPABASE_KEY`)
 - Optional: Supabase CLI for running migrations locally (`npm install -g supabase`)
 
 ## Local Setup
+
 1. Install dependencies:
-	```bash
-	poetry install
-	```
+   ```bash
+   poetry install
+   ```
 2. Create a `.env` file at the project root with your Supabase credentials:
-	```env
-	SUPABASE_URL="https://your-project.supabase.co"
-	SUPABASE_KEY="your-service-role-key"
-	```
+   ```env
+   SUPABASE_URL="https://your-project.supabase.co"
+   SUPABASE_KEY="your-service-role-key"
+   ```
 3. (Optional) Start Supabase locally and apply migrations:
-	```bash
-	supabase start
-	supabase db reset
-	```
+   ```bash
+   supabase start
+   supabase db reset
+   ```
 
 ## Running the API
+
 ```bash
 poetry run uvicorn music_catalogue.main:app --reload
 ```
@@ -55,45 +60,68 @@ poetry run uvicorn music_catalogue.main:app --reload
 
 ## Key API Endpoints
 
-| Method | Path            | Description                                 |
-|--------|-----------------|---------------------------------------------|
-| GET    | `/search`       | Unified search across all entities          |
-| GET    | `/works/{id}`   | Fetch a work by internal identifier         |
-| GET    | `/works`        | Search works by text query                  |
-| GET    | `/artists/{id}` | Fetch an artist by internal identifier      |
-| GET    | `/artists`      | Search artists and people by text query     |
+| Method | Path            | Description                             |
+| ------ | --------------- | --------------------------------------- |
+| GET    | `/search`       | Unified search across all entities      |
+| GET    | `/works/{id}`   | Fetch a work by internal identifier     |
+| GET    | `/works`        | Search works by text query              |
+| GET    | `/artists/{id}` | Fetch an artist by internal identifier  |
+| GET    | `/artists`      | Search artists and people by text query |
 
 Query parameters are validated using FastAPI `Query` definitions (e.g., `min_length=2`, `max_length=50`, `limit` range `1-100`).
 
-## Running XML to DB Migration Scripts
-### Catalogue of Carl Nielsen's Works
+## Running Extraction Scripts
+
+### From Catalogue of Carl Nielsen's Works
+
 To extract and display information:
+
 ```bash
-python scripts/cnw_xml_to_db.py "{xml_file_url}"
+poetry run python scripts/cnw_xml_to_db.py "{xml_file_url}"
 ```
 
 To extract, display, and save data to the database:
+
 ```bash
-python scripts/cnw_xml_to_db.py --save "{xml_file_url}"
+poetry run python scripts/cnw_xml_to_db.py --save "{xml_file_url}"
+```
+
+### From Spotify Album ID
+
+To extract and display information:
+
+```bash
+poetry run python scripts/spotify_album_to_db.py "{album_id}"
+```
+
+To extract, display, and save data to the database:
+
+```bash
+poetry run python scripts/spotify_album_to_db.py --save "{album_id}"
 ```
 
 ## Testing and Quality Gates
+
 Run the full test suite:
+
 ```bash
 poetry run pytest
 ```
 
 Run a subset (e.g., CRUD tests):
+
 ```bash
 poetry run pytest tests/crud
 ```
 
 Optional coverage report:
+
 ```bash
 poetry run pytest --cov=music_catalogue
 ```
 
 Static analysis with Ruff:
+
 ```bash
 poetry run ruff check .
 ```

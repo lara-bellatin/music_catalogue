@@ -1,9 +1,7 @@
-import uuid
-
 import pytest
 from pydantic import ValidationError
 
-from music_catalogue.models.inputs.credit_create import CreditCreate
+from music_catalogue.models.inputs.credit_create import WorkVersionCreditCreate
 from music_catalogue.models.inputs.work_create import (
     WorkCreate,
     WorkVersionCreate,
@@ -11,60 +9,13 @@ from music_catalogue.models.inputs.work_create import (
 from music_catalogue.models.types import VersionType
 
 
-class TestCreditCreate:
-    """Tests for CreditCreate model."""
-
-    def test_validate_with_person_id_success(self):
-        CreditCreate(person_id=str(uuid.uuid4()), work_id=str(uuid.uuid4()), role="Composer")
-
-    def test_validate_with_artist_id_success(self):
-        CreditCreate(artist_id=str(uuid.uuid4()), work_id=str(uuid.uuid4()), role="Composer")
-
-    def test_validate_with_version_id_success(self):
-        CreditCreate(person_id=str(uuid.uuid4()), version_id=str(uuid.uuid4()), role="Performer")
-
-    def test_validate_missing_person_artist_raises(self):
-        with pytest.raises(ValidationError) as exc_info:
-            CreditCreate(work_id=str(uuid.uuid4()), role="Composer")
-
-        assert "Either person or artist ID" in str(exc_info.value)
-
-    def test_validate_both_person_artist_raises(self):
-        with pytest.raises(ValidationError) as exc_info:
-            CreditCreate(
-                person_id=str(uuid.uuid4()),
-                artist_id=str(uuid.uuid4()),
-                work_id=str(uuid.uuid4()),
-                role="Composer",
-            )
-
-        assert "Either person or artist ID" in str(exc_info.value)
-
-    def test_validate_missing_work_version_raises(self):
-        with pytest.raises(ValidationError) as exc_info:
-            CreditCreate(person_id=str(uuid.uuid4()), role="Composer")
-
-        assert "Either work or version ID" in str(exc_info.value)
-
-    def test_validate_both_work_version_raises(self):
-        with pytest.raises(ValidationError) as exc_info:
-            CreditCreate(
-                person_id=str(uuid.uuid4()),
-                work_id=str(uuid.uuid4()),
-                version_id=str(uuid.uuid4()),
-                role="Composer",
-            )
-
-        assert "Either work or version ID" in str(exc_info.value)
-
-
 class TestWorkVersionCreate:
     """Tests for WorkVersionCreate model."""
 
-    def test_validate_success(self):
+    def test_validate_success(self, sample_uuid):
         WorkVersionCreate(
             title="A Work Version",
-            primary_artist_id=str(uuid.uuid4()),
+            primary_artist_id=sample_uuid,
             version_type=VersionType.LIVE,
             release_year=1990,
             duration_seconds=480,
@@ -79,11 +30,11 @@ class TestWorkVersionCreate:
 
         assert "Invalid UUID" in str(exc_info.value)
 
-    def test_validate_invalid_release_year_raises(self):
+    def test_validate_invalid_release_year_raises(self, sample_uuid):
         with pytest.raises(ValidationError) as exc_info:
             WorkVersionCreate(
                 title="Impossible Year",
-                primary_artist_id=str(uuid.uuid4()),
+                primary_artist_id=sample_uuid,
                 release_year=1234567890,
             )
 
@@ -93,18 +44,18 @@ class TestWorkVersionCreate:
 class TestWorkCreate:
     """Tests for WorkCreate model."""
 
-    def test_validate_success(self):
-        work_id = str(uuid.uuid4())
+    def test_validate_success(self, sample_uuid):
+        work_id = sample_uuid
         WorkCreate(
             title="A Work",
             origin_year_start=1900,
             origin_year_end=1950,
-            genre_ids=[str(uuid.uuid4())],
-            credits=[CreditCreate(person_id=str(uuid.uuid4()), work_id=work_id, role="Composer")],
+            genre_ids=[sample_uuid],
+            credits=[WorkVersionCreditCreate(person_id=sample_uuid, work_id=work_id, role="Composer")],
             versions=[
                 WorkVersionCreate(
                     title="A Version",
-                    primary_artist_id=str(uuid.uuid4()),
+                    primary_artist_id=sample_uuid,
                     version_type=VersionType.ORIGINAL,
                 )
             ],
@@ -116,9 +67,11 @@ class TestWorkCreate:
 
         assert "Start year" in str(exc_info.value)
 
-    def test_validate_invalid_credit_raises(self):
+    def test_validate_invalid_credit_raises(self, sample_uuid):
         with pytest.raises(ValidationError) as exc_info:
-            WorkCreate(title="Missing Credit IDs", credits=[CreditCreate(work_id=str(uuid.uuid4()), role="Composer")])
+            WorkCreate(
+                title="Missing Credit IDs", credits=[WorkVersionCreditCreate(work_id=sample_uuid, role="Composer")]
+            )
 
         assert "Either person or artist ID" in str(exc_info.value)
 

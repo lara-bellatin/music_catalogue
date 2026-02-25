@@ -9,7 +9,7 @@ from urllib.request import urlopen
 from xml.etree import ElementTree
 
 from music_catalogue.crud.supabase_client import get_supabase
-from music_catalogue.models.inputs.credit_create import CreditCreate
+from music_catalogue.models.inputs.credit_create import WorkVersionCreditCreate
 from music_catalogue.models.inputs.genre_create import GenreCreate
 from music_catalogue.models.inputs.performance_create import (
     PerformanceArtistCreate,
@@ -283,7 +283,7 @@ async def add_to_database(extracted_data: ExtractedWorkData) -> Work:
     for contributor in extracted_data.get("contributors", []):
         person = await _resolve_person(contributor["name"])
         credits.append(
-            CreditCreate(person_id=person.id, role=contributor["role"], is_primary=contributor["is_primary"])
+            WorkVersionCreditCreate(person_id=person.id, role=contributor["role"], is_primary=contributor["is_primary"])
         )
 
     # Search or create genres, collect genre_ids

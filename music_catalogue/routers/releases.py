@@ -21,7 +21,6 @@ async def get_release_by_id(id: str):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No release found with ID {str(id)}")
         return release
     except APIError as e:
-        print(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get release by ID: {str(e)}"
         )

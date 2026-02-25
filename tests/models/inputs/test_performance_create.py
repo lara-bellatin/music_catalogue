@@ -1,5 +1,3 @@
-from datetime import date
-
 import pytest
 from pydantic import ValidationError
 
@@ -106,7 +104,7 @@ class TestPerformanceCreate:
     def test_validate_full_success(self, sample_uuid):
         PerformanceCreate(
             name="Wembley Stadium 2024",
-            performance_date=date(2024, 6, 15),
+            performance_date="2024-06-15",
             venue="Wembley Stadium",
             city="London",
             country="UK",

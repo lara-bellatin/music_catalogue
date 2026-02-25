@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -26,6 +26,7 @@ class Performance(CatalogueModel):
         venue,
         city,
         country,
+        identifiers,
         notes,
         performance_artists({PerformanceArtistRef.query}),
         performance_works({PerformanceWorkRef.query})
@@ -37,6 +38,7 @@ class Performance(CatalogueModel):
     venue: Optional[str] = None
     city: Optional[str] = None
     country: Optional[str] = None
+    identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
     artists: List[PerformanceArtistRef] = Field(default_factory=list)
     works: List[PerformanceWorkRef] = Field(default_factory=list)
@@ -53,6 +55,7 @@ class Performance(CatalogueModel):
             venue=data.get("venue"),
             city=data.get("city"),
             country=data.get("country"),
+            identifiers=data.get("identifiers"),
             notes=data.get("notes"),
             artists=_parse_list(PerformanceArtistRef, data.get("performance_artists")),
             works=_parse_list(PerformanceWorkRef, data.get("performance_works")),
