@@ -281,7 +281,7 @@ async def create_release(
     album_data: ExtractedAlbumData,
     version_map: Dict[str, str],
     artist_id_map: Dict[str, str],
-) -> str:
+) -> Release:
     """Insert a release and its release_tracks."""
     album_artists = album_data["artists"]
     primary_artist_id = artist_id_map.get(album_artists[0]["spotify_id"]) if album_artists else None
@@ -321,7 +321,7 @@ async def create_release(
     )
 
 
-async def add_to_database(data: ExtractedAlbumData) -> str:
+async def add_to_database(data: ExtractedAlbumData) -> Release:
     """Create all entities in the database and return the release_id."""
     # Resolve all unique artists across the album (album-level + track-level)
     all_artists: Dict[str, ExtractedArtist] = {}
@@ -368,8 +368,8 @@ async def main() -> None:
 
     if args.save:
         print("\nAdding to Database...")
-        release_id = await add_to_database(album_data)
-        print(f"Release created with ID: {release_id}")
+        release = await add_to_database(album_data)
+        print(f"Release created with ID: {release.id}")
     else:
         print("\nDry run complete. Use --save to write to the database.")
 
