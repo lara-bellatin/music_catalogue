@@ -28,6 +28,7 @@ class WorkVersionCreate(BaseModel):
     identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
     external_links: Optional[List[ExternalLinkCreate]] = None
+    credits: Optional[List[WorkVersionCreditCreate]] = None
 
     @model_validator(mode="after")
     def validate(self):

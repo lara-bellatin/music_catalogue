@@ -7,7 +7,7 @@ from music_catalogue.crud.supabase_client import get_supabase
 from music_catalogue.models.base import CatalogueModel
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.responses.assets import ExternalLink
-from music_catalogue.models.responses.references import ReleaseRef, VersionRef
+from music_catalogue.models.responses.references import ArtistRef, CreditRef, ReleaseRef, VersionRef
 from music_catalogue.models.types import (
     AudioChannel,
     AvailabilityStatus,
@@ -43,6 +43,7 @@ class Release(CatalogueModel):
         total_tracks,
         identifiers,
         notes,
+        primary_artist:artists!fk_releases_primary_artist({ArtistRef.query}),
         release_media_items(
             media_item_id,
             medium_type,
@@ -68,9 +69,11 @@ class Release(CatalogueModel):
             disc_number,
             side,
             is_hidden_track,
+            identifiers,
             notes,
             version:versions({VersionRef.query})
-        )
+        ),
+        credits({CreditRef.work_version_query})
     """
 
     id: str
@@ -87,8 +90,10 @@ class Release(CatalogueModel):
     total_tracks: int
     identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
+    primary_artist: Optional[ArtistRef] = None
     media_items: List["ReleaseMediaItem"] = Field(default_factory=list)
     tracks: List["ReleaseTrack"] = Field(default_factory=list)
+    credits: List[CreditRef] = Field(default_factory=list)
     external_links: List[ExternalLink] = Field(default_factory=list)
 
     @classmethod
@@ -110,13 +115,15 @@ class Release(CatalogueModel):
             total_tracks=data.get("total_tracks"),
             identifiers=data.get("identifiers"),
             notes=data.get("notes"),
+            primary_artist=_parse(ArtistRef, data.get("primary_artist")),
             media_items=_parse_list(ReleaseMediaItem, data.get("release_media_items")),
             tracks=_parse_list(ReleaseTrack, data.get("release_tracks")),
+            credits=_parse_list(CreditRef, data.get("credits")),
         )
 
     @classmethod
     async def create(cls, data, exclude: set = None) -> "Release":
-        exclude = (exclude or set()) | {"media_items", "tracks", "external_links"}
+        exclude = (exclude or set()) | {"media_items", "tracks", "credits", "external_links"}
         supabase = await get_supabase()
         release = None
 
@@ -141,12 +148,22 @@ class Release(CatalogueModel):
                     .execute()
                 )
 
+            if data.credits:
+                await (
+                    supabase.table("credits")
+                    .insert(
+                        [{"release_id": release.id, **credit.model_dump(exclude_none=True)} for credit in data.credits]
+                    )
+                    .execute()
+                )
+
             return await cls.get_by_id(release.id)
 
         except PostgrestAPIError as e:
             if release and release.id:
                 await supabase.table("release_media_items").delete().eq("release_id", release.id).execute()
                 await supabase.table("release_tracks").delete().eq("release_id", release.id).execute()
+                await supabase.table("credits").delete().eq("release_id", release.id).execute()
                 await supabase.table("releases").delete().eq("release_id", release.id).execute()
             raise APIError(str(e)) from None
         except Exception as e:
@@ -206,6 +223,7 @@ class ReleaseTrack(CatalogueModel):
     side: Optional[str] = None
     release: Optional[Release] = None
     is_hidden: bool = False
+    identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
 
     @classmethod
@@ -218,5 +236,6 @@ class ReleaseTrack(CatalogueModel):
             disc_number=data.get("disc_number"),
             side=data.get("side"),
             is_hidden=data.get("is_hidden_track"),
+            identifiers=data.get("identifiers"),
             notes=data.get("notes"),
         )

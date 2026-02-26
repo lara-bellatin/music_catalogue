@@ -90,13 +90,6 @@ class Work(CatalogueModel):
                 # TODO: Implement bulk create
                 for version in data.versions:
                     await Version.create(VersionCreate(work_id=work.id, **version.model_dump(exclude_none=True)))
-                # await (
-                #     supabase.table("versions")
-                #     .insert(
-                #         [{"work_id": work.id, **version.model_dump(exclude_none=True, exclude={"external_links"})} for version in data.versions]
-                #     )
-                #     .execute()
-                # )
 
             # Create credits
             if data.credits:

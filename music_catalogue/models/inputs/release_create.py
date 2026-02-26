@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, model_validator
 
 from music_catalogue.models.inputs.assets_create import ExternalLinkCreate
+from music_catalogue.models.inputs.credit_create import WorkVersionCreditCreate
 from music_catalogue.models.validation import validate_date, validate_uuid
 
 
@@ -33,6 +34,7 @@ class ReleaseTrackCreate(BaseModel):
     disc_number: Optional[int] = None
     side: Optional[str] = None
     is_hidden_track: Optional[bool] = None
+    identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
 
     @model_validator(mode="after")
@@ -53,14 +55,18 @@ class ReleaseCreate(BaseModel):
     cover_art_url: Optional[str] = None
     total_discs: Optional[int] = None
     total_tracks: Optional[int] = None
+    primary_artist_id: Optional[str] = None
     identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
     media_items: Optional[List[ReleaseMediaItemCreate]] = None
     tracks: Optional[List[ReleaseTrackCreate]] = None
+    credits: Optional[List[WorkVersionCreditCreate]] = None
     external_links: Optional[List[ExternalLinkCreate]] = None
 
     @model_validator(mode="after")
     def validate(self):
         if self.release_date:
             validate_date(self.release_date)
+        if self.primary_artist_id:
+            validate_uuid(self.primary_artist_id)
         return self
