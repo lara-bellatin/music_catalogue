@@ -19,21 +19,18 @@ def validate_uuid(uuid: str) -> None:
         raise ValueError(f"Invalid UUID {uuid}: {str(e)}") from None
 
 
-def validate_date(date_str: str) -> date:
+def validate_date(date_str: str) -> None:
     """
     Check if a date has a valid format
 
     Args:
         date_str (str, optional): The date to check in ISO 8601 format (YYYY-MM-DD)
 
-    Returns:
-        date: The date object the string represents
-
     Raises:
         ValidationError: If the date is invalid
     """
     try:
-        return date.fromisoformat(date_str)
+        date.fromisoformat(date_str)
     except ValueError as e:
         raise ValueError(f"Invalid date format {date_str}: {str(e)}") from None
 
@@ -70,12 +67,12 @@ def validate_start_and_end_dates(start_date: Optional[str] = None, end_date: Opt
         now = datetime.now().date()
         if start_date:
             # Check date is valid and in ISO 8601 format
-            start_date = validate_date(start_date)
+            start_date = date.fromisoformat(start_date)
             # Check date is not in the future
             if start_date > now:
                 raise ValueError("Start date can't be in the future")
         if end_date:
-            end_date = validate_date(end_date)
+            end_date = date.fromisoformat(end_date)
             if end_date > now:
                 raise ValueError("End date can't be in the future")
 

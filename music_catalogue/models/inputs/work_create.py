@@ -1,10 +1,9 @@
-from datetime import date
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, model_validator
 
 from music_catalogue.models.inputs.assets_create import ExternalLinkCreate
-from music_catalogue.models.inputs.credit_create import CreditCreate
+from music_catalogue.models.inputs.credit_create import WorkVersionCreditCreate
 from music_catalogue.models.types import CompletenessLevel, VersionType
 from music_catalogue.models.validation import (
     validate_date,
@@ -19,14 +18,16 @@ class WorkVersionCreate(BaseModel):
     title: str
     version_type: VersionType = VersionType.ORIGINAL
     primary_artist_id: str
-    release_date: Optional[date] = None
+    release_date: Optional[str] = None
     release_year: Optional[int] = None
     duration_seconds: Optional[int] = None
     bpm: Optional[int] = None
     key_signature: Optional[str] = None
     lyrics_reference: Optional[str] = None
     completeness_level: CompletenessLevel = CompletenessLevel.COMPLETE
+    identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
+    external_links: Optional[List[ExternalLinkCreate]] = None
 
     @model_validator(mode="after")
     def validate(self):
@@ -38,6 +39,8 @@ class WorkVersionCreate(BaseModel):
             validate_date(self.release_date)
         if self.release_year:
             validate_year(self.release_year)
+
+        return self
 
 
 class WorkCreate(BaseModel):
@@ -54,7 +57,7 @@ class WorkCreate(BaseModel):
     notes: Optional[str] = None
     genre_ids: Optional[List[str]] = None
     versions: Optional[List[WorkVersionCreate]] = None
-    credits: Optional[List[CreditCreate]] = None
+    credits: Optional[List[WorkVersionCreditCreate]] = None
     external_links: Optional[List[ExternalLinkCreate]] = None
 
     @model_validator(mode="after")
@@ -64,3 +67,5 @@ class WorkCreate(BaseModel):
         # If genre IDs, validate they are UUIDs
         if self.genre_ids:
             [validate_uuid(genre_id) for genre_id in self.genre_ids]
+
+        return self

@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -37,6 +37,7 @@ class Version(CatalogueModel):
         key_signature,
         lyrics_reference,
         completeness_level,
+        identifiers,
         notes,
         credits({CreditRef.work_version_query})
     """
@@ -54,6 +55,7 @@ class Version(CatalogueModel):
     key_signature: Optional[str] = None
     lyrics_reference: Optional[str] = None
     completeness_level: CompletenessLevel = CompletenessLevel.COMPLETE
+    identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
     derived_versions: List[VersionRef] = Field(default_factory=list)
     credits: List[CreditRef] = Field(default_factory=list)
@@ -77,6 +79,7 @@ class Version(CatalogueModel):
             key_signature=data.get("key_signature"),
             lyrics_reference=data.get("lyrics_reference"),
             completeness_level=CompletenessLevel(data.get("completeness_level")),
+            identifiers=data.get("identifiers"),
             notes=data.get("notes"),
             credits=_parse_list(CreditRef, data.get("credits")),
             derived_versions=_parse_list(VersionRef, data.get("derived_versions")),

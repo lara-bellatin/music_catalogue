@@ -20,7 +20,6 @@ class CatalogueModel(BaseModel):
         - table_name: The Supabase table name
         - pk_column: The primary key column name (e.g., "work_id")
         - query: The select query string for get_by_id
-        - search_query: The select query string for search (optional, defaults to query)
         - search_column: The column to use for text search (optional, defaults to "search_text")
         - entity_type: The EntityType for fetching external links (optional)
         - from_dict: Classmethod to parse a dict into the model
@@ -29,7 +28,6 @@ class CatalogueModel(BaseModel):
     table_name: ClassVar[str]
     pk_column: ClassVar[str]
     query: ClassVar[str]
-    search_query: ClassVar[Optional[str]] = None
     search_column: ClassVar[str] = "search_text"
     entity_type: ClassVar[Optional[EntityType]] = None
     ref_model: ClassVar[BaseModel] = None
@@ -84,7 +82,7 @@ class CatalogueModel(BaseModel):
             raise APIError(str(e)) from None
 
     @classmethod
-    async def search(cls, query: str) -> List[Self]:
+    async def search(cls, query: str) -> List[BaseModel]:
         """
         Search for records using text search.
 
@@ -99,7 +97,7 @@ class CatalogueModel(BaseModel):
         """
         try:
             supabase = await get_supabase()
-            select_query = cls.search_query or cls.query
+            select_query = cls.ref_model.query or cls.query
 
             res = await (
                 supabase.table(cls.table_name)
@@ -132,8 +130,9 @@ class CatalogueModel(BaseModel):
             APIError: If Supabase throws an error
         """
         try:
+            instance_id = None
             supabase = await get_supabase()
-            exclude = exclude or set()
+            exclude = (exclude or set()) | {"external_links"}
 
             res = await (
                 supabase.table(cls.table_name).insert(data.model_dump(exclude_none=True, exclude=exclude)).execute()
@@ -145,7 +144,7 @@ class CatalogueModel(BaseModel):
             instance_id = res.data[0].get(cls.pk_column)
 
             # Fetch external links if entity_type is defined
-            if cls.entity_type and hasattr(data, "external_links"):
+            if cls.entity_type and hasattr(data, "external_links") and data.external_links:
                 from music_catalogue.crud.assets import bulk_create_external_links
 
                 await bulk_create_external_links(data.external_links, cls.entity_type, instance_id)
@@ -163,4 +162,35 @@ class CatalogueModel(BaseModel):
                     .execute()
                 )
                 await supabase.table(cls.table_name).delete().eq(cls.pk_column, instance_id).execute()
+            raise APIError(str(e)) from None
+
+    @classmethod
+    async def get_by_identifier(cls, identifier_label: str, identifier_value: str) -> Optional[Self]:
+        """
+        Query Supabase for a row whose JSON identifiers column contains the label and value pair specified.
+
+        Args:
+            identifier_label (str): The label for the identifier to search by
+            identifier_value (str): The value of the identifier
+
+        Returns:
+            The model instance if found, None otherwise
+
+        Raises:
+            APIError: If Supabase throws an error
+        """
+        try:
+            supabase = await get_supabase()
+            res = (
+                await supabase.table(cls.table_name)
+                .select(cls.query)
+                .eq(f"identifiers->>{identifier_label}", identifier_value)
+                .limit(1)
+                .execute()
+            )
+            if res.data:
+                return cls.from_dict(res.data[0])
+        except PostgrestAPIError as e:
+            if e.code == "PGRST116":  # Not found
+                return None
             raise APIError(str(e)) from None

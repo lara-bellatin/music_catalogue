@@ -1,10 +1,9 @@
-from datetime import date
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, model_validator
 
 from music_catalogue.models.inputs.assets_create import ExternalLinkCreate
-from music_catalogue.models.inputs.credit_create import CreditCreate
+from music_catalogue.models.inputs.credit_create import WorkVersionCreditCreate
 from music_catalogue.models.types import CompletenessLevel, VersionType
 from music_catalogue.models.validation import (
     validate_date,
@@ -13,22 +12,22 @@ from music_catalogue.models.validation import (
 )
 
 
-# CREATE
 class VersionCreate(BaseModel):
     title: str
     work_id: str
     primary_artist_id: str
     version_type: VersionType = VersionType.ORIGINAL
     based_on_version_id: Optional[str] = None
-    release_date: Optional[date] = None
+    release_date: Optional[str] = None
     release_year: Optional[int] = None
     duration_seconds: Optional[int] = None
     bpm: Optional[int] = None
     key_signature: Optional[str] = None
     lyrics_reference: Optional[str] = None
     completeness_level: CompletenessLevel = CompletenessLevel.COMPLETE
+    identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
-    credits: Optional[List[CreditCreate]] = None
+    credits: Optional[List[WorkVersionCreditCreate]] = None
     external_links: Optional[List[ExternalLinkCreate]] = None
 
     @model_validator(mode="after")
@@ -46,3 +45,5 @@ class VersionCreate(BaseModel):
         validate_uuid(self.primary_artist_id)
         if self.based_on_version_id:
             validate_uuid(self.based_on_version_id)
+
+        return self

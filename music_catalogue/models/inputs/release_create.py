@@ -1,5 +1,4 @@
-from datetime import date
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, model_validator
 
@@ -23,7 +22,9 @@ class ReleaseMediaItemCreate(BaseModel):
     barcode: Optional[str] = None
     catalog_variation: Optional[str] = None
     availability_status: Optional[str] = None
+    identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
+    external_links: Optional[List[ExternalLinkCreate]] = None
 
 
 class ReleaseTrackCreate(BaseModel):
@@ -31,17 +32,18 @@ class ReleaseTrackCreate(BaseModel):
     track_number: int
     disc_number: Optional[int] = None
     side: Optional[str] = None
-    is_hidden: Optional[bool] = None
+    is_hidden_track: Optional[bool] = None
     notes: Optional[str] = None
 
     @model_validator(mode="after")
     def validate(self):
         validate_uuid(self.version_id)
+        return self
 
 
 class ReleaseCreate(BaseModel):
-    title: str
-    release_date: Optional[date] = None
+    release_title: str
+    release_date: Optional[str] = None
     release_category: Optional[str] = None
     catalog_number: Optional[str] = None
     publisher_number: Optional[str] = None
@@ -51,6 +53,7 @@ class ReleaseCreate(BaseModel):
     cover_art_url: Optional[str] = None
     total_discs: Optional[int] = None
     total_tracks: Optional[int] = None
+    identifiers: Optional[List[Dict[str, Any]]] = None
     notes: Optional[str] = None
     media_items: Optional[List[ReleaseMediaItemCreate]] = None
     tracks: Optional[List[ReleaseTrackCreate]] = None
@@ -59,4 +62,5 @@ class ReleaseCreate(BaseModel):
     @model_validator(mode="after")
     def validate(self):
         if self.release_date:
-            validate_date(str(self.release_date))
+            validate_date(self.release_date)
+        return self

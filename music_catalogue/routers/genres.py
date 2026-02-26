@@ -20,7 +20,6 @@ async def get_genre_by_id(id: str):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No genre found with ID {str(id)}")
         return genre
     except APIError as e:
-        print(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get genre by ID: {str(e)}"
         )

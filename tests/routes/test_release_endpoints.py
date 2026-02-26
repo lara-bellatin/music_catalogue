@@ -82,7 +82,7 @@ class TestReleaseEndpoints:
 
     def test_create_release_success(self, test_client):
         """POST /releases returns created release payload."""
-        payload = {"title": "New Album", "total_tracks": 12}
+        payload = {"release_title": "New Album", "total_tracks": 12}
         release = Release(id="rel-123", title="New Album", total_tracks=12)
 
         with patch("music_catalogue.routers.releases.Release.create", new_callable=AsyncMock) as mock_create:
@@ -97,7 +97,7 @@ class TestReleaseEndpoints:
     def test_create_release_with_nested_data(self, test_client, sample_uuid):
         """POST /releases accepts nested media items and tracks."""
         payload = {
-            "title": "Full Album",
+            "release_title": "Full Album",
             "media_items": [
                 {"medium_type": "digital", "format_name": "FLAC"},
             ],
@@ -126,7 +126,7 @@ class TestReleaseEndpoints:
         with patch("music_catalogue.routers.releases.Release.create", new_callable=AsyncMock) as mock_create:
             mock_create.side_effect = APIError("Insert failure")
 
-            response = test_client.post("/releases", json={"title": "Failing Album"})
+            response = test_client.post("/releases", json={"release_title": "Failing Album"})
 
             assert response.status_code == 500
             assert "Insert failure" in response.json()["detail"]

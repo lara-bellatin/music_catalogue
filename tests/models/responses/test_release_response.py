@@ -23,7 +23,7 @@ class TestRelease:
     def test_release_from_dict_full_payload(self):
         payload = {
             "release_id": "release-1",
-            "title": "Live Album",
+            "release_title": "Live Album",
             "release_date": "2020-01-01",
             "release_category": "album",
             "catalog_number": "ABC-123",
@@ -100,7 +100,7 @@ class TestRelease:
             "track_number": 1,
             "disc_number": 1,
             "side": "A",
-            "is_hidden": False,
+            "is_hidden_track": False,
             "notes": "Opener",
         }
 

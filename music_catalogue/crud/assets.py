@@ -55,7 +55,7 @@ async def get_external_links(entity_type: EntityType, entity_id: str) -> List[Ex
 
 
 async def bulk_create_external_links(
-    data: ExternalLinkCreate, entity_type: EntityType, entity_id: str
+    data: List[ExternalLinkCreate], entity_type: EntityType, entity_id: str
 ) -> List[ExternalLink]:
     """
     Bulk creates external links for a specified entity
@@ -85,13 +85,13 @@ async def bulk_create_external_links(
                         # TODO: Remove hardcoded value once user implementation is done
                         "added_by": "760c6a23-cf19-4e59-89aa-f6921943bc26",
                     }
-                    for link in data.external_links
+                    for link in data
                 ]
             )
             .execute()
         )
 
-        return _parse_list(external_links.data)
+        return _parse_list(ExternalLink, external_links.data)
 
     except PostgrestAPIError as e:
         raise APIError(str(e)) from None

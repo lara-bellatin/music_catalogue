@@ -1,5 +1,3 @@
-from datetime import date
-
 import pytest
 from pydantic import ValidationError
 
@@ -86,12 +84,12 @@ class TestReleaseCreate:
     """Tests for ReleaseCreate model."""
 
     def test_validate_minimal_success(self):
-        ReleaseCreate(title="Abbey Road")
+        ReleaseCreate(release_title="Abbey Road")
 
     def test_validate_full_success(self, sample_uuid):
         ReleaseCreate(
-            title="Abbey Road",
-            release_date=date(1969, 9, 26),
+            release_title="Abbey Road",
+            release_date="1969-09-26",
             release_category="album",
             catalog_number="PCS 7088",
             publisher_number="PN-001",
@@ -122,7 +120,7 @@ class TestReleaseCreate:
         )
 
     def test_validate_defaults(self):
-        release = ReleaseCreate(title="Test")
+        release = ReleaseCreate(release_title="Test")
 
         assert release.release_date is None
         assert release.release_category is None
@@ -146,7 +144,7 @@ class TestReleaseCreate:
     def test_validate_invalid_track_propagates(self):
         with pytest.raises(ValidationError) as exc_info:
             ReleaseCreate(
-                title="Bad Track",
+                release_title="Bad Track",
                 tracks=[ReleaseTrackCreate(version_id="not-a-uuid", track_number=1)],
             )
 

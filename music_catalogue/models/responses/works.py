@@ -5,10 +5,12 @@ from pydantic import BaseModel, Field
 from music_catalogue.crud.supabase_client import get_supabase
 from music_catalogue.models.base import CatalogueModel
 from music_catalogue.models.exceptions import APIError
+from music_catalogue.models.inputs.version_create import VersionCreate
 from music_catalogue.models.inputs.work_create import WorkCreate
 from music_catalogue.models.responses.assets import ExternalLink
 from music_catalogue.models.responses.genres import Genre
 from music_catalogue.models.responses.references import CreditRef, VersionRef, WorkRef
+from music_catalogue.models.responses.versions import Version
 from music_catalogue.models.types import EntityType
 from music_catalogue.models.utils import _parse_list
 from supabase import PostgrestAPIError
@@ -85,13 +87,16 @@ class Work(CatalogueModel):
 
             # Create versions
             if data.versions:
-                await (
-                    supabase.table("versions")
-                    .insert(
-                        [{"work_id": work.id, **version.model_dump(exclude_none=True)} for version in data.versions]
-                    )
-                    .execute()
-                )
+                # TODO: Implement bulk create
+                for version in data.versions:
+                    await Version.create(VersionCreate(work_id=work.id, **version.model_dump(exclude_none=True)))
+                # await (
+                #     supabase.table("versions")
+                #     .insert(
+                #         [{"work_id": work.id, **version.model_dump(exclude_none=True, exclude={"external_links"})} for version in data.versions]
+                #     )
+                #     .execute()
+                # )
 
             # Create credits
             if data.credits:
