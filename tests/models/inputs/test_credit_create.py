@@ -37,7 +37,7 @@ class TestCreditCreate:
         with pytest.raises(ValidationError) as exc_info:
             CreditCreate(person_id=sample_uuid, role="Composer")
 
-        assert "Either work or version ID" in str(exc_info.value)
+        assert "Either work, version or release ID" in str(exc_info.value)
 
     def test_validate_both_work_version_raises(self, sample_uuid):
         with pytest.raises(ValidationError) as exc_info:
@@ -48,4 +48,4 @@ class TestCreditCreate:
                 role="Composer",
             )
 
-        assert "Either work or version ID" in str(exc_info.value)
+        assert "Either work, version or release ID" in str(exc_info.value)

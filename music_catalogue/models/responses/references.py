@@ -83,22 +83,24 @@ class VersionRef(BaseModel):
 
 
 class ReleaseRef(BaseModel):
-    query: ClassVar[str] = "release_id, title, release_date, release_category"
+    query: ClassVar[str] = "release_id, release_title, release_date, release_category, cover_art_url"
 
     id: str
     title: str
     release_year: Optional[int] = None
     release_category: ReleaseCategory = ReleaseCategory.SINGLE
+    cover_art_url: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> "ReleaseRef":
         return cls(
             id=data["release_id"],
-            title=data["title"],
-            release_date=datetime.strptime(data.get("release_date"), "%Y-%m-%d").year
+            title=data["release_title"],
+            release_year=datetime.strptime(data.get("release_date"), "%Y-%m-%d").year
             if data.get("release_date")
             else None,
             release_category=ReleaseCategory(data.get("release_category")),
+            cover_art_url=data.get("cover_art_url"),
         )
 
 
@@ -137,7 +139,8 @@ class CreditRef(BaseModel):
         credit_order,
         notes,
         work:works({WorkRef.query}),
-        version:versions({VersionRef.query})
+        version:versions({VersionRef.query}),
+        release:releases({ReleaseRef.query})
     """
 
     role: str
@@ -149,6 +152,7 @@ class CreditRef(BaseModel):
     person: Optional[PersonRef] = None
     work: Optional[WorkRef] = None
     version: Optional[VersionRef] = None
+    release: Optional[ReleaseRef] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> "CreditRef":
@@ -162,6 +166,7 @@ class CreditRef(BaseModel):
             person=_parse(PersonRef, data.get("person")),
             work=_parse(WorkRef, data.get("work")),
             version=_parse(VersionRef, data.get("version")),
+            release=_parse(ReleaseRef, data.get("release")),
         )
 
 

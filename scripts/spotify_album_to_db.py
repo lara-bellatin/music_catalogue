@@ -103,7 +103,6 @@ def extract_album_data(album_id: str, token: str) -> ExtractedAlbumData:
     """Fetch album, artist, and track data from Spotify and return a structured dict."""
     album = spotify_get(f"albums/{album_id}", token)
 
-    # TODO: Add this to credits and add the first one as primary artist
     # Collect unique album-level artists
     album_artists: List[ExtractedArtist] = []
     for artist in album.get("artists", []):
@@ -212,34 +211,36 @@ async def find_or_create_version(track: ExtractedTrack, artist_id_map: Dict[str,
         print(f"Found version by identifier: {version.id}")
         return version
 
-    # Try to get by title search, removing anything after symbols
-    matches = await Version.search(track["title"].split("-")[0].split("(")[0].strip())
+    # Try to get by title search
+    matches = await Version.search(track["title"])
     if matches:
         print(f"Found version match by name: {matches[0].id}")
         return await Version.get_by_id(matches[0].id)
 
-    # Try to get a work match by search
+    # Try to get a work match by search, removing anything after symbols
     work_matches = await Work.search(track["title"].split("-")[0].split("(")[0].strip())
     if work_matches:
         print(f"Found work match by name: {work_matches[0].id}")
         # Create version with found work ID
-        version = VersionCreate(
-            work_id=work_matches[0].id,
-            title=track["title"],
-            primary_artist_id=artist_id_map.get(track["artists"][0]["spotify_id"]),
-            duration_seconds=track["duration_seconds"],
-            version_type=VersionType.ORIGINAL,
-            identifiers=[{"label": "spotify", "value": track["spotify_id"]}]
-            + [{"label": k, "value": v} for k, v in (track.get("external_ids") or {}).items()],
-            external_links=[ExternalLinkCreate(label="Spotify", url=track["url"], source_verified=True)],
-            credits=[
-                WorkVersionCreditCreate(
-                    artist_id=artist_id_map.get(artist["spotify_id"]),
-                    role="performer",
-                    is_primary=(artist["spotify_id"] == track["artists"][0]["spotify_id"]),
-                )
-                for artist in track["artists"]
-            ],
+        version = await Version.create(
+            VersionCreate(
+                work_id=work_matches[0].id,
+                title=track["title"],
+                primary_artist_id=artist_id_map.get(track["artists"][0]["spotify_id"]),
+                duration_seconds=track["duration_seconds"],
+                version_type=VersionType.ORIGINAL,
+                identifiers=[{"label": "spotify", "value": track["spotify_id"]}]
+                + [{"label": k, "value": v} for k, v in (track.get("external_ids") or {}).items()],
+                external_links=[ExternalLinkCreate(label="Spotify", url=track["url"], source_verified=True)],
+                credits=[
+                    WorkVersionCreditCreate(
+                        artist_id=artist_id_map.get(artist["spotify_id"]),
+                        role="performer",
+                        is_primary=(artist["spotify_id"] == track["artists"][0]["spotify_id"]),
+                    )
+                    for artist in track["artists"]
+                ],
+            )
         )
         print(f"Created version: {version.id}")
         return version
@@ -279,8 +280,12 @@ async def find_or_create_version(track: ExtractedTrack, artist_id_map: Dict[str,
 async def create_release(
     album_data: ExtractedAlbumData,
     version_map: Dict[str, str],
+    artist_id_map: Dict[str, str],
 ) -> str:
     """Insert a release and its release_tracks."""
+    album_artists = album_data["artists"]
+    primary_artist_id = artist_id_map.get(album_artists[0]["spotify_id"]) if album_artists else None
+
     return await Release.create(
         ReleaseCreate(
             release_title=album_data["title"],
@@ -289,18 +294,29 @@ async def create_release(
             label=album_data.get("label"),
             cover_art_url=album_data.get("cover_art_url"),
             total_tracks=album_data["total_tracks"],
+            primary_artist_id=primary_artist_id,
             tracks=[
                 ReleaseTrackCreate(
                     version_id=version_map.get(track["spotify_id"], None),
                     disc_number=track["disc_number"],
                     track_number=track["track_number"],
+                    identifiers=[{"label": "spotify", "value": track["spotify_id"]}]
+                    + [{"label": k, "value": v} for k, v in (track.get("external_ids") or {}).items()],
                 )
                 for track in album_data["tracks"]
             ],
             identifiers=[{"label": "spotify", "value": album_data["spotify_id"]}]
             + [{"label": k, "value": v} for k, v in (album_data.get("external_ids") or {}).items()],
             external_links=[ExternalLinkCreate(label="Spotify", url=album_data["url"], source_verified=True)],
-            # TODO: add credits and set primary artist
+            credits=[
+                WorkVersionCreditCreate(
+                    artist_id=artist_id_map.get(artist["spotify_id"]),
+                    role="performer",
+                    is_primary=(artist["spotify_id"] == primary_artist_id),
+                    credit_order=i,
+                )
+                for i, artist in enumerate(album_artists)
+            ],
         ),
     )
 
@@ -328,7 +344,7 @@ async def add_to_database(data: ExtractedAlbumData) -> str:
         version_map[track["spotify_id"]] = version.id
 
     # Create the release and link tracks
-    return await create_release(data, version_map)
+    return await create_release(data, version_map, artist_id_map)
 
 
 async def main() -> None:

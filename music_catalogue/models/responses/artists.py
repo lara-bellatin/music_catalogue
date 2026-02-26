@@ -7,7 +7,7 @@ from music_catalogue.models.base import CatalogueModel
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.inputs.artist_create import ArtistCreate
 from music_catalogue.models.responses.assets import ExternalLink
-from music_catalogue.models.responses.references import ArtistRef, CreditRef, PersonRef, VersionRef
+from music_catalogue.models.responses.references import ArtistRef, CreditRef, PersonRef, ReleaseRef, VersionRef
 from music_catalogue.models.types import ArtistType, EntityType
 from music_catalogue.models.utils import _parse, _parse_list
 from supabase import PostgrestAPIError
@@ -37,7 +37,8 @@ class Artist(CatalogueModel):
             person:persons({PersonRef.query})
         ),
         versions({VersionRef.query}),
-        credits({CreditRef.artist_person_query})
+        credits({CreditRef.artist_person_query}),
+        releases({ReleaseRef.query})
     """
 
     id: str
@@ -53,6 +54,7 @@ class Artist(CatalogueModel):
     credits: Optional[List[CreditRef]] = None
     versions: Optional[List[VersionRef]] = None
     external_links: Optional[List[ExternalLink]] = None
+    releases: Optional[List[ReleaseRef]] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Artist":
@@ -69,6 +71,7 @@ class Artist(CatalogueModel):
             members=_parse_list(ArtistMembership, data.get("artist_memberships", None)) or None,
             credits=_parse_list(CreditRef, data.get("credits", None)) or None,
             versions=_parse_list(VersionRef, data.get("versions", None)) or None,
+            releases=_parse_list(ReleaseRef, data.get("releases", None)) or None,
         )
 
     @classmethod

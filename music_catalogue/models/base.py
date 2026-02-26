@@ -1,3 +1,5 @@
+import json
+import re
 from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Self
 
 from pydantic import BaseModel
@@ -99,10 +101,12 @@ class CatalogueModel(BaseModel):
             supabase = await get_supabase()
             select_query = cls.ref_model.query or cls.query
 
+            search_query = re.sub(r"[^a-zA-Z0-9\s']", "", query).replace(" ", "+")
+
             res = await (
                 supabase.table(cls.table_name)
                 .select(select_query)
-                .text_search(cls.search_column, query.replace(" ", "+"))
+                .text_search(cls.search_column, search_query)
                 .execute()
             )
 
@@ -184,7 +188,7 @@ class CatalogueModel(BaseModel):
             res = (
                 await supabase.table(cls.table_name)
                 .select(cls.query)
-                .eq(f"identifiers->>{identifier_label}", identifier_value)
+                .contains("identifiers", json.dumps([{"label": identifier_label, "value": identifier_value}]))
                 .limit(1)
                 .execute()
             )
