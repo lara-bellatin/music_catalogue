@@ -17,6 +17,7 @@ from music_catalogue.models.inputs.assets_create import ExternalLinkCreate
 from music_catalogue.models.inputs.credit_create import WorkVersionCreditCreate
 from music_catalogue.models.inputs.person_create import PersonCreate
 from music_catalogue.models.inputs.release_create import ReleaseCreate, ReleaseTrackCreate
+from music_catalogue.models.inputs.version_create import VersionCreate
 from music_catalogue.models.inputs.work_create import WorkCreate, WorkVersionCreate
 from music_catalogue.models.responses.artists import Artist
 from music_catalogue.models.responses.persons import Person
@@ -163,9 +164,12 @@ async def find_or_create_person(name: str) -> Person:
     """Return an existing person matching specified name, or create a new one."""
     matches = await Person.search(name)
     if matches:
+        print(f"Found person match by name: {matches[0].id}")
         # search returns PersonRef object, need to return full Person
         return await Person.get_by_id(matches[0].id)
-    return await Person.create(PersonCreate(legal_name=name))
+    person = await Person.create(PersonCreate(legal_name=name))
+    print(f"Created person: {person.id}")
+    return person
 
 
 async def find_or_create_artist(artist_info: ExtractedArtist) -> Artist:
@@ -173,27 +177,31 @@ async def find_or_create_artist(artist_info: ExtractedArtist) -> Artist:
     # Try to get by identifiers
     artist = await Artist.get_by_identifier(identifier_label="spotify", identifier_value=artist_info["spotify_id"])
     if artist:
+        print(f"Found artist by identifier: {artist.id}")
         return artist
 
     # Try to get by name search
     matches = await Artist.search(artist_info["name"])
     if matches:
+        print(f"Found artist match by name: {matches[0].id}")
         return await Artist.get_by_id(matches[0].id)
 
     # Try to get person by name search or create
     person = await find_or_create_person(artist_info["name"])
 
     # If not found, create
-    return await Artist.create(
+    new_artist = await Artist.create(
         ArtistCreate(
             artist_type=ArtistType.SOLO,
             display_name=artist_info["name"],
             sort_name=artist_info["name"],
             person_id=person.id,
-            identifiers=[{"spotify": artist_info["spotify_id"]}],
+            identifiers=[{"label": "spotify", "value": artist_info["spotify_id"]}],
             external_links=[ExternalLinkCreate(label="Spotify", url=artist_info["url"], source_verified=True)],
         )
     )
+    print(f"Created artist: {new_artist.id}")
+    return new_artist
 
 
 async def find_or_create_version(track: ExtractedTrack, artist_id_map: Dict[str, str]) -> Version:
@@ -201,15 +209,43 @@ async def find_or_create_version(track: ExtractedTrack, artist_id_map: Dict[str,
     # Try to get by identifiers
     version = await Version.get_by_identifier(identifier_label="spotify", identifier_value=track["spotify_id"])
     if version:
+        print(f"Found version by identifier: {version.id}")
         return version
 
-    # Try to get by title search
-    matches = await Version.search(track["title"])
+    # Try to get by title search, removing anything after symbols
+    matches = await Version.search(track["title"].split("-")[0].split("(")[0].strip())
     if matches:
+        print(f"Found version match by name: {matches[0].id}")
         return await Version.get_by_id(matches[0].id)
 
+    # Try to get a work match by search
+    work_matches = await Work.search(track["title"].split("-")[0].split("(")[0].strip())
+    if work_matches:
+        print(f"Found work match by name: {work_matches[0].id}")
+        # Create version with found work ID
+        version = VersionCreate(
+            work_id=work_matches[0].id,
+            title=track["title"],
+            primary_artist_id=artist_id_map.get(track["artists"][0]["spotify_id"]),
+            duration_seconds=track["duration_seconds"],
+            version_type=VersionType.ORIGINAL,
+            identifiers=[{"label": "spotify", "value": track["spotify_id"]}]
+            + [{"label": k, "value": v} for k, v in (track.get("external_ids") or {}).items()],
+            external_links=[ExternalLinkCreate(label="Spotify", url=track["url"], source_verified=True)],
+            credits=[
+                WorkVersionCreditCreate(
+                    artist_id=artist_id_map.get(artist["spotify_id"]),
+                    role="performer",
+                    is_primary=(artist["spotify_id"] == track["artists"][0]["spotify_id"]),
+                )
+                for artist in track["artists"]
+            ],
+        )
+        print(f"Created version: {version.id}")
+        return version
+
     # If not found, create a new work and version
-    return await Work.create(
+    work = await Work.create(
         WorkCreate(
             title=track["title"],
             versions=[
@@ -218,7 +254,8 @@ async def find_or_create_version(track: ExtractedTrack, artist_id_map: Dict[str,
                     primary_artist_id=artist_id_map.get(track["artists"][0]["spotify_id"]),
                     duration_seconds=track["duration_seconds"],
                     version_type=VersionType.ORIGINAL,
-                    identifiers=[{"spotify": track["spotify_id"]}],
+                    identifiers=[{"label": "spotify", "value": track["spotify_id"]}]
+                    + [{"label": k, "value": v} for k, v in (track.get("external_ids") or {}).items()],
                     external_links=[ExternalLinkCreate(label="Spotify", url=track["url"], source_verified=True)],
                     credits=[
                         WorkVersionCreditCreate(
@@ -232,6 +269,11 @@ async def find_or_create_version(track: ExtractedTrack, artist_id_map: Dict[str,
             ],
         )
     )
+    print(f"Created work: {work.id}")
+    print(f"Created version: {work.versions[0].id}")
+
+    # Return the version, not the work
+    return work.versions[0]
 
 
 async def create_release(
@@ -255,7 +297,8 @@ async def create_release(
                 )
                 for track in album_data["tracks"]
             ],
-            identifiers=[{"spotify": album_data["spotify_id"]}],
+            identifiers=[{"label": "spotify", "value": album_data["spotify_id"]}]
+            + [{"label": k, "value": v} for k, v in (album_data.get("external_ids") or {}).items()],
             external_links=[ExternalLinkCreate(label="Spotify", url=album_data["url"], source_verified=True)],
             # TODO: add credits and set primary artist
         ),
