@@ -56,6 +56,7 @@ class WorkCreate(BaseModel):
     themes: Optional[List[str]] = None
     sentiment: Optional[str] = None
     notes: Optional[str] = None
+    based_on_work_id: Optional[str] = None
     genre_ids: Optional[List[str]] = None
     versions: Optional[List[WorkVersionCreate]] = None
     credits: Optional[List[WorkVersionCreditCreate]] = None
@@ -65,6 +66,9 @@ class WorkCreate(BaseModel):
     def validate(self):
         # Check origin year start and end
         validate_start_and_end_years(self.origin_year_start, self.origin_year_end)
+        # If based_on_work_id, validate it's a UUID
+        if self.based_on_work_id:
+            validate_uuid(self.based_on_work_id)
         # If genre IDs, validate they are UUIDs
         if self.genre_ids:
             [validate_uuid(genre_id) for genre_id in self.genre_ids]

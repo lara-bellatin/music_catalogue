@@ -51,6 +51,15 @@ class VersionType(str, Enum):
     MASHUP = "mashup"
     DEMO = "demo"
     RADIO_EDIT = "radio_edit"
+    ACOUSTIC = "acoustic"
+    INSTRUMENTAL = "instrumental"
+    A_CAPPELLA = "a_cappella"
+    EXTENDED = "extended"
+    REMASTER = "remaster"
+    ARRANGEMENT = "arrangement"
+    TRANSCRIPTION = "transcription"
+    EXCERPT = "excerpt"
+    MEDLEY = "medley"
     OTHER = "other"
 
 
