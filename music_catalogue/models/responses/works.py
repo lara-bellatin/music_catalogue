@@ -12,7 +12,7 @@ from music_catalogue.models.responses.genres import Genre
 from music_catalogue.models.responses.references import CreditRef, VersionRef, WorkRef
 from music_catalogue.models.responses.versions import Version
 from music_catalogue.models.types import EntityType
-from music_catalogue.models.utils import _parse_list
+from music_catalogue.models.utils import _parse, _parse_list
 from supabase import PostgrestAPIError
 
 
@@ -34,6 +34,8 @@ class Work(CatalogueModel):
         themes,
         sentiment,
         notes,
+        based_on_work:based_on_work_id({WorkRef.query}),
+        derived_works:works({WorkRef.query}),
         versions({VersionRef.query}),
         work_genres(genres(genre_id, name)),
         credits({CreditRef.work_version_query})
@@ -51,6 +53,8 @@ class Work(CatalogueModel):
     themes: Optional[List[str]] = None
     sentiment: Optional[str] = None
     notes: Optional[str] = None
+    based_on_work: Optional[WorkRef] = None
+    derived_works: List[WorkRef] = Field(default_factory=list)
     versions: List[VersionRef] = Field(default_factory=list)
     genres: List[Genre] = Field(default_factory=list)
     credits: List[CreditRef] = Field(default_factory=list)
@@ -71,6 +75,8 @@ class Work(CatalogueModel):
             themes=data.get("themes"),
             sentiment=data.get("sentiment"),
             notes=data.get("notes"),
+            based_on_work=_parse(WorkRef, data.get("based_on_work")),
+            derived_works=_parse_list(WorkRef, data.get("derived_works")),
             versions=_parse_list(VersionRef, data.get("versions")),
             genres=_parse_list(Genre, [item.get("genres", None) for item in data.get("work_genres", [])]),
             credits=_parse_list(CreditRef, data.get("credits")),
