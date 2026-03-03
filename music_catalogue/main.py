@@ -1,7 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from music_catalogue.routers import artists, extract, genres, performances, persons, releases, search, versions, works
+from music_catalogue.routers import (
+    artists,
+    extract,
+    genres,
+    performances,
+    persons,
+    releases,
+    search,
+    stats,
+    versions,
+    works,
+)
 
 app = FastAPI(title="Music Catalogue API")
 
@@ -22,3 +33,4 @@ app.include_router(performances.router)
 app.include_router(releases.router)
 app.include_router(genres.router)
 app.include_router(extract.router)
+app.include_router(stats.router)
