@@ -2,7 +2,7 @@
 
 from unittest.mock import AsyncMock, patch
 
-from music_catalogue.models.responses.search import UnifiedSearchResult
+from music_catalogue.models.responses.search import PaginatedSearchResponse, UnifiedSearchResult
 from music_catalogue.models.types import EntityType
 
 
@@ -26,9 +26,10 @@ class TestSearchEndpoints:
                 rank=0.9,
             ),
         ]
+        mock_response = PaginatedSearchResponse(results=mock_results, total_count=2, limit=10, offset=0)
 
         with patch("music_catalogue.routers.search.unified_search", new_callable=AsyncMock) as mock_unified_search:
-            mock_unified_search.return_value = mock_results
+            mock_unified_search.return_value = mock_response
 
             response = test_client.get(
                 "/search",
@@ -36,8 +37,12 @@ class TestSearchEndpoints:
             )
 
             assert response.status_code == 200
-            assert response.json() == [item.model_dump(exclude_none=True) for item in mock_results]
-            mock_unified_search.assert_awaited_once_with(query, [], 10)
+            data = response.json()
+            assert data["total_count"] == 2
+            assert data["limit"] == 10
+            assert data["offset"] == 0
+            assert len(data["results"]) == 2
+            mock_unified_search.assert_awaited_once_with(query, [], 10, 0)
 
     def test_search_limited_entities_success(self, test_client):
         """Search across all entities with filters returns serialized results."""
@@ -50,9 +55,10 @@ class TestSearchEndpoints:
                 rank=0.9,
             ),
         ]
+        mock_response = PaginatedSearchResponse(results=mock_results, total_count=1, limit=10, offset=0)
 
         with patch("music_catalogue.routers.search.unified_search", new_callable=AsyncMock) as mock_unified_search:
-            mock_unified_search.return_value = mock_results
+            mock_unified_search.return_value = mock_response
 
             response = test_client.get(
                 "/search",
@@ -60,8 +66,10 @@ class TestSearchEndpoints:
             )
 
             assert response.status_code == 200
-            assert response.json() == [item.model_dump(exclude_none=True) for item in mock_results]
-            mock_unified_search.assert_awaited_once_with(query, [EntityType.WORK], 10)
+            data = response.json()
+            assert data["total_count"] == 1
+            assert len(data["results"]) == 1
+            mock_unified_search.assert_awaited_once_with(query, [EntityType.WORK], 10, 0)
 
     def test_search_all_invalid_limit(self, test_client):
         """Requests exceeding limit validation are rejected."""
@@ -72,16 +80,18 @@ class TestSearchEndpoints:
     def test_search_all_no_entity_filters(self, test_client):
         """Search defaults to all entity types when filter absent."""
         query = "beethoven"
-        mock_results = []
+        mock_response = PaginatedSearchResponse(results=[], total_count=0, limit=20, offset=0)
 
         with patch("music_catalogue.routers.search.unified_search", new_callable=AsyncMock) as mock_unified_search:
-            mock_unified_search.return_value = mock_results
+            mock_unified_search.return_value = mock_response
 
             response = test_client.get("/search", params={"query": query})
 
             assert response.status_code == 200
-            assert response.json() == []
-            mock_unified_search.assert_awaited_once_with(query, [], 20)
+            data = response.json()
+            assert data["results"] == []
+            assert data["total_count"] == 0
+            mock_unified_search.assert_awaited_once_with(query, [], 20, 0)
 
     def test_search_all_query_length_validation(self, test_client):
         """Query length is enforced for unified search."""

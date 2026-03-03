@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -21,3 +21,10 @@ class UnifiedSearchResult(BaseModel):
             secondary_text=data.get("secondary_text"),
             rank=data["rank"],
         )
+
+
+class PaginatedSearchResponse(BaseModel):
+    results: List[UnifiedSearchResult]
+    total_count: int
+    limit: int
+    offset: int
