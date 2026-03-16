@@ -101,7 +101,8 @@ class CatalogueModel(BaseModel):
             supabase = await get_supabase()
             select_query = cls.ref_model.query or cls.query
 
-            search_query = re.sub(r"[^a-zA-Z0-9\s']", "", query).replace(" ", "+")
+            search_query = re.sub(r"[^\w\s']", "", query.replace("-", " "))
+            search_query = "+".join(search_query.split())
 
             res = await (
                 supabase.table(cls.table_name)

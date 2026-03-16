@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
@@ -24,7 +26,7 @@ async def extract_cnw(body: CNWExtractRequest):
     from scripts.cnw_xml_to_db import add_to_database, transform_mei
 
     try:
-        extracted_data = transform_mei(body.source)
+        extracted_data = await asyncio.to_thread(transform_mei, body.source)
         return await add_to_database(extracted_data)
     except APIError as e:
         raise HTTPException(
@@ -56,8 +58,8 @@ async def extract_spotify_album(body: SpotifyAlbumExtractRequest):
         )
 
     try:
-        token = get_spotify_token()
-        album_data = extract_album_data(body.album_id, token)
+        token = await asyncio.to_thread(get_spotify_token)
+        album_data = await asyncio.to_thread(extract_album_data, body.album_id, token)
         return await add_to_database(album_data)
     except APIError as e:
         raise HTTPException(

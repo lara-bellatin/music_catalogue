@@ -31,7 +31,7 @@ async def unified_search(
         search_query = supabase.rpc(
             "unified_search",
             {
-                "query_text": query.replace(" ", "+"),
+                "query_text": query.replace("-", " "),
                 "fetch_limit": limit,
                 "fetch_offset": offset,
             },
