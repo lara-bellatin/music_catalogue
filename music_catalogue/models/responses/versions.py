@@ -8,7 +8,7 @@ from music_catalogue.models.base import CatalogueModel
 from music_catalogue.models.exceptions import APIError
 from music_catalogue.models.inputs.version_create import VersionCreate
 from music_catalogue.models.responses.assets import ExternalLink
-from music_catalogue.models.responses.references import ArtistRef, CreditRef, VersionRef, WorkRef
+from music_catalogue.models.responses.references import ArtistRef, CreditRef, PerformanceRef, VersionRef, WorkRef
 from music_catalogue.models.types import CompletenessLevel, EntityType, VersionType
 from music_catalogue.models.utils import (
     _parse,
@@ -39,7 +39,8 @@ class Version(CatalogueModel):
         completeness_level,
         identifiers,
         notes,
-        credits({CreditRef.work_version_query})
+        credits({CreditRef.work_version_query}),
+        performance_works(performances({PerformanceRef.query}))
     """
 
     id: str
@@ -59,6 +60,7 @@ class Version(CatalogueModel):
     notes: Optional[str] = None
     derived_versions: List[VersionRef] = Field(default_factory=list)
     credits: List[CreditRef] = Field(default_factory=list)
+    performances: List[PerformanceRef] = Field(default_factory=list)
     external_links: List[ExternalLink] = Field(default_factory=list)
 
     @classmethod
@@ -82,6 +84,9 @@ class Version(CatalogueModel):
             identifiers=data.get("identifiers"),
             notes=data.get("notes"),
             credits=_parse_list(CreditRef, data.get("credits")),
+            performances=_parse_list(
+                PerformanceRef, [item.get("performances") for item in data.get("performance_works", [])]
+            ),
             derived_versions=_parse_list(VersionRef, data.get("derived_versions")),
         )
 

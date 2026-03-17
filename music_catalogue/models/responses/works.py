@@ -9,7 +9,7 @@ from music_catalogue.models.inputs.version_create import VersionCreate
 from music_catalogue.models.inputs.work_create import WorkCreate
 from music_catalogue.models.responses.assets import ExternalLink
 from music_catalogue.models.responses.genres import Genre
-from music_catalogue.models.responses.references import CreditRef, VersionRef, WorkRef
+from music_catalogue.models.responses.references import CreditRef, PerformanceRef, VersionRef, WorkRef
 from music_catalogue.models.responses.versions import Version
 from music_catalogue.models.types import EntityType
 from music_catalogue.models.utils import _parse, _parse_list
@@ -38,7 +38,8 @@ class Work(CatalogueModel):
         derived_works:works({WorkRef.query}),
         versions({VersionRef.query}),
         work_genres(genres(genre_id, name)),
-        credits({CreditRef.work_version_query})
+        credits({CreditRef.work_version_query}),
+        performance_works(performances({PerformanceRef.query}))
     """
 
     id: str
@@ -58,6 +59,7 @@ class Work(CatalogueModel):
     versions: List[VersionRef] = Field(default_factory=list)
     genres: List[Genre] = Field(default_factory=list)
     credits: List[CreditRef] = Field(default_factory=list)
+    performances: List[PerformanceRef] = Field(default_factory=list)
     external_links: List[ExternalLink] = Field(default_factory=list)
 
     @classmethod
@@ -79,6 +81,9 @@ class Work(CatalogueModel):
             derived_works=_parse_list(WorkRef, data.get("derived_works")),
             versions=_parse_list(VersionRef, data.get("versions")),
             genres=_parse_list(Genre, [item.get("genres", None) for item in data.get("work_genres", [])]),
+            performances=_parse_list(
+                PerformanceRef, [item.get("performances") for item in data.get("performance_works", [])]
+            ),
             credits=_parse_list(CreditRef, data.get("credits")),
         )
 
